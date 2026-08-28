@@ -1,0 +1,191 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>net.aetherealtech</groupId>
+    <artifactId>ujp-einvoice</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+    <packaging>jar</packaging>
+
+    <name>UJP e-Faktura Gateway Client</name>
+    <description>A minimal-dependency Java client for the North Macedonian UJP e-Faktura e-invoicing gateway.</description>
+    <url>https://github.com/Aethereal-Tech/ujp-einvoice</url>
+
+    <licenses>
+        <license>
+            <name>MIT License</name>
+            <url>https://opensource.org/licenses/MIT</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <scm>
+        <connection>scm:git:https://github.com/Aethereal-Tech/ujp-einvoice.git</connection>
+        <url>https://github.com/Aethereal-Tech/ujp-einvoice</url>
+    </scm>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <!-- Consumers need JDK 25 or newer. `release` (not source/target) is what also checks every
+             call against the Java 25 API, so the bytecode version and the API surface cannot disagree.
+             Current language features are in scope here by choice, not by accident. -->
+        <maven.compiler.release>25</maven.compiler.release>
+
+        <junit.version>5.14.4</junit.version>
+        <assertj.version>3.27.7</assertj.version>
+        <wiremock.version>3.13.2</wiremock.version>
+        <jacoco.version>0.8.15</jacoco.version>
+    </properties>
+
+    <!-- ZERO runtime dependencies, deliberately, not just "minimal". The proprietary JSON shape this
+         library reconstructs (see README > Specification status) is a closed, self-contained object
+         graph we control end to end, and RS256 JWS is four primitives java.security already has
+         (Signature, KeyStore, Base64, MessageDigest indirectly via SHA256withRSA). Neither needed a
+         library; Jackson or Nimbus would have added a transitive surface, a version to keep current,
+         and a CVE feed to watch, in exchange for nothing this library's own code does not already do
+         in a few hundred lines that are wholly ours to read, test and fix. If a corrected spec turns
+         out to need general-purpose JSON (arbitrary nesting, unknown fields, etc.), that is the moment
+         to reconsider — not before. -->
+    <dependencies>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>${junit.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+            <version>${assertj.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.wiremock</groupId>
+            <artifactId>wiremock</artifactId>
+            <version>${wiremock.version}</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.15.0</version>
+                <configuration>
+                    <compilerArgs>
+                        <arg>-Xlint:all,-serial</arg>
+                    </compilerArgs>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.5.6</version>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-source-plugin</artifactId>
+                <version>3.4.0</version>
+                <executions>
+                    <execution>
+                        <id>attach-sources</id>
+                        <goals><goal>jar-no-fork</goal></goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <version>3.12.0</version>
+                <executions>
+                    <execution>
+                        <id>attach-javadocs</id>
+                        <goals><goal>jar</goal></goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <doclint>none</doclint>
+                    <quiet>true</quiet>
+                </configuration>
+            </plugin>
+
+            <!-- Strict on layers 1-2 (domain model + signing) from day one: that code is pure logic,
+                 fully unit-testable, and it is either money math or a cryptographic signature — both
+                 categories where an unexecuted line is a line nobody has seen behave. Layer 3
+                 (transport) is exercised through WireMock instead of chased to the same number here;
+                 an HTTP client's error branches are cheaper and more honest to prove with a fake server
+                 than with a coverage percentage. Raising the floor later is easy; a gate introduced
+                 after the fact is one that gets argued down instead of met. -->
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>${jacoco.version}</version>
+                <executions>
+                    <execution>
+                        <id>prepare-agent</id>
+                        <goals><goal>prepare-agent</goal></goals>
+                    </execution>
+                    <execution>
+                        <id>report</id>
+                        <phase>verify</phase>
+                        <goals><goal>report</goal></goals>
+                    </execution>
+                    <execution>
+                        <id>check-domain-and-signing</id>
+                        <phase>verify</phase>
+                        <goals><goal>check</goal></goals>
+                        <configuration>
+                            <rules>
+                                <rule>
+                                    <element>BUNDLE</element>
+                                    <!-- JaCoCo class-pattern syntax uses '/' as the package separator
+                                         (ANT-style, matched against the .class file path), NOT '.' —
+                                         a dotted pattern here silently matches nothing, and an
+                                         includes filter matching nothing makes the ratio check pass
+                                         vacuously. Verified by deliberately using the wrong syntax
+                                         first and observing the gate pass at real coverage below the
+                                         floor; ujp-einvoice's own CI would not have caught it either,
+                                         since the intended check would never have run. -->
+                                    <includes>
+                                        <include>net/aetherealtech/ujpeinvoice/model/*</include>
+                                        <include>net/aetherealtech/ujpeinvoice/serialization/*</include>
+                                        <include>net/aetherealtech/ujpeinvoice/signing/*</include>
+                                    </includes>
+                                    <!-- The PKCS#11 pathway needs a physical hardware token and a
+                                         vendor-supplied native module; nothing in this repository can
+                                         exercise it. Excluded from the ratio rather than counted
+                                         against it — see Pkcs11KeyStores' class javadoc. -->
+                                    <excludes>
+                                        <exclude>net/aetherealtech/ujpeinvoice/signing/Pkcs11KeyStores</exclude>
+                                    </excludes>
+                                    <limits>
+                                        <limit>
+                                            <counter>LINE</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.90</minimum>
+                                        </limit>
+                                    </limits>
+                                </rule>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+    <distributionManagement>
+        <repository>
+            <id>github</id>
+            <name>GitHub Packages</name>
+            <url>https://maven.pkg.github.com/Aethereal-Tech/ujp-einvoice</url>
+        </repository>
+    </distributionManagement>
+</project>
