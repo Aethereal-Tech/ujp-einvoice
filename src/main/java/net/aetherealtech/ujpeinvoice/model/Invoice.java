@@ -37,6 +37,14 @@ public record Invoice(String invoiceNumber, LocalDate issueDate, LocalDate dueDa
         if (seller == null) {
             throw new InvoiceValidationException("Invoice.seller must not be null");
         }
+        // The buyer may be a natural person carrying nothing but a name; the seller never can. It is
+        // the taxpayer issuing the document, and a document issued by an unidentified one is not an
+        // invoice. See Party.company.
+        String missing = seller.missingCompanyField();
+        if (missing != null) {
+            throw new InvoiceValidationException("Invoice.seller." + missing
+                    + " must be present: a seller is always an identified business");
+        }
         if (buyer == null) {
             throw new InvoiceValidationException("Invoice.buyer must not be null");
         }
@@ -144,6 +152,12 @@ public record Invoice(String invoiceNumber, LocalDate issueDate, LocalDate dueDa
         public Builder addLineItem(String description, BigDecimal quantity, BigDecimal unitPrice,
                                     VatCategory vatCategory) {
             return addLineItem(new LineItem(description, quantity, unitPrice, vatCategory));
+        }
+
+        /** As above, stating what the quantity is counted in — see {@link LineItem#unit()}. */
+        public Builder addLineItem(String description, BigDecimal quantity, BigDecimal unitPrice,
+                                    VatCategory vatCategory, String unit) {
+            return addLineItem(new LineItem(description, quantity, unitPrice, vatCategory, unit));
         }
 
         /** Defaults to {@link DocumentType#INVOICE}. */

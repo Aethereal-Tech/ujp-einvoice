@@ -131,6 +131,11 @@ public final class UjpJsonSerializer implements Serializer {
     @ProvisionalSpec("Line item field name for the quantity.")
     private static final String FIELD_LINE_QUANTITY = "quantity";
 
+    @ProvisionalSpec("Line item field name for the unit of measure, free text, omitted when absent. "
+            + "This library's own naming, with no evidence; nothing says UJP expects a unit at all, "
+            + "let alone a UN/ECE Rec 20 code.")
+    private static final String FIELD_LINE_UNIT = "unit";
+
     @ProvisionalSpec("Line item field name for the per-unit price, before VAT.")
     private static final String FIELD_LINE_UNIT_PRICE = "unitPrice";
 
@@ -210,20 +215,20 @@ public final class UjpJsonSerializer implements Serializer {
     }
 
     private JsonObject toJson(Party party) {
-        return JsonObject.builder()
-                .put(FIELD_PARTY_NAME, party.name())
-                .put(FIELD_PARTY_TAX_ID, party.taxId())
-                .put(FIELD_PARTY_ADDRESS, toJson(party.address()))
-                .build();
+        JsonObject.Builder builder = JsonObject.builder().put(FIELD_PARTY_NAME, party.name());
+        putIfPresent(builder, FIELD_PARTY_TAX_ID, party.taxId());
+        if (party.address() != null) {
+            builder.put(FIELD_PARTY_ADDRESS, toJson(party.address()));
+        }
+        return builder.build();
     }
 
     private JsonObject toJson(Address address) {
-        return JsonObject.builder()
-                .put(FIELD_ADDRESS_STREET, address.street())
-                .put(FIELD_ADDRESS_CITY, address.city())
-                .put(FIELD_ADDRESS_POSTAL_CODE, address.postalCode())
-                .put(FIELD_ADDRESS_COUNTRY, address.country())
-                .build();
+        JsonObject.Builder builder = JsonObject.builder();
+        putIfPresent(builder, FIELD_ADDRESS_STREET, address.street());
+        putIfPresent(builder, FIELD_ADDRESS_CITY, address.city());
+        putIfPresent(builder, FIELD_ADDRESS_POSTAL_CODE, address.postalCode());
+        return builder.put(FIELD_ADDRESS_COUNTRY, address.country()).build();
     }
 
     private JsonArray lineItemsToJson(List<LineItem> lineItems) {
@@ -235,9 +240,11 @@ public final class UjpJsonSerializer implements Serializer {
     }
 
     private JsonObject toJson(LineItem lineItem) {
-        return JsonObject.builder()
+        JsonObject.Builder builder = JsonObject.builder()
                 .put(FIELD_LINE_DESCRIPTION, lineItem.description())
-                .put(FIELD_LINE_QUANTITY, lineItem.quantity())
+                .put(FIELD_LINE_QUANTITY, lineItem.quantity());
+        putIfPresent(builder, FIELD_LINE_UNIT, lineItem.unit());
+        return builder
                 .put(FIELD_LINE_UNIT_PRICE, lineItem.unitPrice())
                 .put(FIELD_LINE_VAT_CATEGORY, lineItem.vatCategory().code())
                 .put(FIELD_LINE_NET_AMOUNT, lineItem.netAmount())
@@ -268,5 +275,19 @@ public final class UjpJsonSerializer implements Serializer {
                 .put(FIELD_CATEGORY_VAT, categoryTotal.vat())
                 .put(FIELD_CATEGORY_GROSS, categoryTotal.gross())
                 .build();
+    }
+
+    /**
+     * An absent optional field is left out of the object entirely rather than written as {@code ""}
+     * or {@code null}. Which of the three UJP accepts is unknown; omission is the one that cannot be
+     * mistaken for a value the seller supplied, and it is what a natural-person buyer's missing
+     * street or tax id relies on (see {@code Party.naturalPerson}).
+     */
+    @ProvisionalSpec("Omitting an absent field, rather than writing an empty string or null, is this "
+            + "library's own choice; the gateway's tolerance for either is unverified.")
+    private static void putIfPresent(JsonObject.Builder builder, String field, String value) {
+        if (value != null) {
+            builder.put(field, value);
+        }
     }
 }

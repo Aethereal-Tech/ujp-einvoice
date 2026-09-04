@@ -1,8 +1,10 @@
 package net.aetherealtech.ujpeinvoice.serialization;
 
+import net.aetherealtech.ujpeinvoice.model.Address;
 import net.aetherealtech.ujpeinvoice.model.DocumentReference;
 import net.aetherealtech.ujpeinvoice.model.DocumentType;
 import net.aetherealtech.ujpeinvoice.model.Invoice;
+import net.aetherealtech.ujpeinvoice.model.Party;
 import net.aetherealtech.ujpeinvoice.model.VatCategory;
 import net.aetherealtech.ujpeinvoice.testsupport.InvoiceFixtures;
 import org.junit.jupiter.api.Test;
@@ -70,6 +72,40 @@ class UjpJsonSerializerTest {
                 + "\"invoiceNumber\":\"DN-2026-0003\",\"issueDate\":\"2026-09-04\","
                 + "\"correctedInvoice\":{\"number\":\"INV-2026-0002\",\"issueDate\":\"2026-08-28\"},"
                 + "\"currency\":\"MKD\",");
+    }
+
+    @Test
+    void matchesGoldenFileForAConsumerInvoice() {
+        assertThat(serialize(InvoiceFixtures.consumerInvoice())).isEqualTo(golden("consumer-invoice.json"));
+    }
+
+    @Test
+    void aNaturalPersonBuyerWritesOnlyWhatIsKnownAboutThem() {
+        String json = serialize(InvoiceFixtures.consumerInvoice());
+
+        assertThat(json).contains("\"buyer\":{\"name\":\"Ана Ангеловска\"},");
+        assertThat(json).doesNotContain("\"taxId\":\"\"");
+        assertThat(json).doesNotContain("\"address\":{}");
+    }
+
+    @Test
+    void aPartialAddressWritesOnlyThePartsItHas() {
+        Invoice invoice = Invoice.builder()
+                .invoiceNumber("INV-2026-0004")
+                .issueDate(LocalDate.of(2026, 9, 4))
+                .currency("MKD")
+                .seller(InvoiceFixtures.seller())
+                .buyer(Party.naturalPerson("Ана Ангеловска", new Address(null, "Битола", null, null)))
+                .addLineItem("Услуга", BigDecimal.ONE, new BigDecimal("500.00"), VatCategory.STANDARD_18)
+                .build();
+
+        assertThat(serialize(invoice))
+                .contains("\"buyer\":{\"name\":\"Ана Ангеловска\",\"address\":{\"city\":\"Битола\",\"country\":\"MK\"}},");
+    }
+
+    @Test
+    void aLineWithoutAUnitWritesNoUnitField() {
+        assertThat(serialize(InvoiceFixtures.simpleInvoice())).doesNotContain("\"unit\":");
     }
 
     @Test

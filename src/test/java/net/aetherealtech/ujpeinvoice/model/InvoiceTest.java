@@ -161,6 +161,84 @@ class InvoiceTest {
     }
 
     @Test
+    void acceptsANaturalPersonAsBuyer() {
+        Invoice invoice = Invoice.builder()
+                .invoiceNumber("INV-B2C")
+                .issueDate(LocalDate.of(2026, 1, 1))
+                .currency("MKD")
+                .seller(SELLER)
+                .buyer(Party.naturalPerson("Ана Ангеловска"))
+                .addLineItem("A", BigDecimal.ONE, BigDecimal.TEN, VatCategory.STANDARD_18)
+                .build();
+
+        assertThat(invoice.buyer().isNaturalPerson()).isTrue();
+        assertThat(invoice.buyer().address()).isNull();
+    }
+
+    @Test
+    void rejectsASellerWithoutATaxId() {
+        Party incomplete = Party.naturalPerson("Sole Trader", ADDRESS);
+
+        assertThatThrownBy(() -> Invoice.builder()
+                .invoiceNumber("INV-16")
+                .issueDate(LocalDate.of(2026, 1, 1))
+                .currency("MKD")
+                .seller(incomplete)
+                .buyer(BUYER)
+                .addLineItem("A", BigDecimal.ONE, BigDecimal.TEN, VatCategory.STANDARD_18)
+                .build())
+                .isInstanceOf(InvoiceValidationException.class)
+                .hasMessageContaining("Invoice.seller.taxId");
+    }
+
+    @Test
+    void rejectsASellerWithAPartialAddress() {
+        Party incomplete = new Party("Seller DOOEL", "4030012345678", new Address(null, "Skopje", "1000", "MK"));
+
+        assertThatThrownBy(() -> Invoice.builder()
+                .invoiceNumber("INV-17")
+                .issueDate(LocalDate.of(2026, 1, 1))
+                .currency("MKD")
+                .seller(incomplete)
+                .buyer(BUYER)
+                .addLineItem("A", BigDecimal.ONE, BigDecimal.TEN, VatCategory.STANDARD_18)
+                .build())
+                .isInstanceOf(InvoiceValidationException.class)
+                .hasMessageContaining("Invoice.seller.address.street");
+    }
+
+    @Test
+    void rejectsASellerWithNoAddressAtAll() {
+        Party incomplete = new Party("Seller DOOEL", "4030012345678", null);
+
+        assertThatThrownBy(() -> Invoice.builder()
+                .invoiceNumber("INV-18")
+                .issueDate(LocalDate.of(2026, 1, 1))
+                .currency("MKD")
+                .seller(incomplete)
+                .buyer(BUYER)
+                .addLineItem("A", BigDecimal.ONE, BigDecimal.TEN, VatCategory.STANDARD_18)
+                .build())
+                .isInstanceOf(InvoiceValidationException.class)
+                .hasMessageContaining("Invoice.seller.address");
+    }
+
+    @Test
+    void aLineItemMayStateItsUnit() {
+        Invoice invoice = Invoice.builder()
+                .invoiceNumber("INV-19")
+                .issueDate(LocalDate.of(2026, 1, 1))
+                .currency("MKD")
+                .seller(SELLER)
+                .buyer(BUYER)
+                .addLineItem("Tiling", new BigDecimal("12"), new BigDecimal("300.00"),
+                        VatCategory.STANDARD_18, "м²")
+                .build();
+
+        assertThat(invoice.lineItems().get(0).unit()).isEqualTo("м²");
+    }
+
+    @Test
     void rejectsNoLineItems() {
         assertThatThrownBy(() -> Invoice.builder()
                 .invoiceNumber("INV-10")

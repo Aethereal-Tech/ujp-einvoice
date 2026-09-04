@@ -58,6 +58,22 @@ public final class InvoiceFixtures {
                 .build();
     }
 
+    /**
+     * A retail sale to a private individual: a buyer with a name and nothing else, and a line that
+     * states its unit of measure. Every field the buyer does not have is absent from the wire.
+     */
+    public static Invoice consumerInvoice() {
+        return Invoice.builder()
+                .invoiceNumber("INV-2026-0003")
+                .issueDate(LocalDate.of(2026, 9, 4))
+                .currency("MKD")
+                .seller(seller())
+                .buyer(Party.naturalPerson("Ана Ангеловска"))
+                .addLineItem("Подни плочки", new BigDecimal("12"), new BigDecimal("300.00"),
+                        VatCategory.STANDARD_18, "м²")
+                .build();
+    }
+
     /** One line per VAT category, exercising every rate (18/10/5/0/exempt) in one invoice. */
     public static Invoice multiCategoryInvoice() {
         return Invoice.builder()
