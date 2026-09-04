@@ -198,13 +198,12 @@ project's own `pom.xml`):
 
 ### From a consuming repository's Actions
 
-A workflow's built-in `GITHUB_TOKEN` reaches only its own repository's packages. For a consuming
-repository, either:
-
-- grant that repository read access in this package's settings — the package page's **Manage Actions
-  access** — after which its `GITHUB_TOKEN` resolves the dependency; or
-- store a token of the kind described above as a secret in the consuming repository, and pass it to
-  Maven instead.
+A workflow's built-in `GITHUB_TOKEN` reaches only its own repository's packages, and nothing widens
+that: Maven packages on GitHub always inherit the permissions of the repository that published them,
+with no per-package Actions access grant to extend read access to a consuming repository. For a
+consuming repository, the only credential that works is a token of the kind described above, stored
+as a secret and passed to Maven instead (Aethereal-Tech repositories use the organization secret
+`PACKAGES_READ_TOKEN`, wired into `actions/setup-java` as `server-password: PACKAGES_READ_TOKEN`).
 
 Every Maven step that resolves this dependency needs those credentials, in CI as much as locally: a
 job that runs `mvn` without them fails at dependency resolution, not at some later step.
