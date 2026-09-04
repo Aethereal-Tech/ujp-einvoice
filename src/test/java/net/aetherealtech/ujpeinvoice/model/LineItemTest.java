@@ -76,6 +76,26 @@ class LineItemTest {
     }
 
     @Test
+    void carriesAnOptionalUnitOfMeasure() {
+        LineItem withUnit = new LineItem("Tiles", new BigDecimal("12"), new BigDecimal("300.00"),
+                VatCategory.STANDARD_18, "м²");
+        LineItem withoutUnit = new LineItem("Tiles", new BigDecimal("12"), new BigDecimal("300.00"),
+                VatCategory.STANDARD_18);
+
+        assertThat(withUnit.unit()).isEqualTo("м²");
+        assertThat(withoutUnit.unit()).isNull();
+        assertThat(withUnit.netAmount()).isEqualByComparingTo(withoutUnit.netAmount());
+    }
+
+    @Test
+    void rejectsABlankUnit() {
+        assertThatThrownBy(() -> new LineItem("Item", BigDecimal.ONE, BigDecimal.TEN,
+                VatCategory.STANDARD_18, "  "))
+                .isInstanceOf(InvoiceValidationException.class)
+                .hasMessageContaining("LineItem.unit");
+    }
+
+    @Test
     void rejectsNullVatCategory() {
         assertThatThrownBy(() -> new LineItem("Item", BigDecimal.ONE, BigDecimal.TEN, null))
                 .isInstanceOf(InvoiceValidationException.class);

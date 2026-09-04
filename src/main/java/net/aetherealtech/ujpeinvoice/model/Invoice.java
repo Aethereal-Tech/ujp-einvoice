@@ -7,16 +7,19 @@ import java.util.Currency;
 import java.util.List;
 
 /**
- * A complete sales invoice: header fields, the two parties, its line items, and totals that are
- * guaranteed to reconcile with those line items.
+ * A complete sales document: header fields, the two parties, its line items, and totals that are
+ * guaranteed to reconcile with those line items. An invoice by default, or — with a
+ * {@link DocumentType} that {@linkplain DocumentType#corrects corrects} — a credit or debit note
+ * naming the invoice it corrects.
  *
  * <p>This type is serialization-agnostic — it knows nothing about JSON, JWS, or the UJP gateway.
  * That separation is deliberate: see {@code net.aetherealtech.ujpeinvoice.serialization.Serializer}
- * for turning an {@code Invoice} into wire bytes, and the project README's "Specification status"
- * section for what is and is not verified about that wire shape.
+ * for turning an {@code Invoice} into wire bytes, and {@code SPECS.md} for what is and is not
+ * verified about that wire shape.
  */
 public record Invoice(String invoiceNumber, LocalDate issueDate, LocalDate dueDate, Currency currency,
-                       Party seller, Party buyer, List<LineItem> lineItems, Totals totals) {
+                       Party seller, Party buyer, List<LineItem> lineItems, Totals totals,
+                       DocumentType documentType, DocumentReference correctedInvoice) {
 
     public Invoice {
         if (invoiceNumber == null || invoiceNumber.isBlank()) {
@@ -33,6 +36,14 @@ public record Invoice(String invoiceNumber, LocalDate issueDate, LocalDate dueDa
         }
         if (seller == null) {
             throw new InvoiceValidationException("Invoice.seller must not be null");
+        }
+        // The buyer may be a natural person carrying nothing but a name; the seller never can. It is
+        // the taxpayer issuing the document, and a document issued by an unidentified one is not an
+        // invoice. See Party.company.
+        String missing = seller.missingCompanyField();
+        if (missing != null) {
+            throw new InvoiceValidationException("Invoice.seller." + missing
+                    + " must be present: a seller is always an identified business");
         }
         if (buyer == null) {
             throw new InvoiceValidationException("Invoice.buyer must not be null");
@@ -53,6 +64,28 @@ public record Invoice(String invoiceNumber, LocalDate issueDate, LocalDate dueDa
                     "Invoice.totals does not reconcile with lineItems: expected " + Totals.compute(lineItems)
                             + " but was " + totals);
         }
+        if (documentType == null) {
+            throw new InvoiceValidationException("Invoice.documentType must not be null");
+        }
+        if (documentType.corrects() && correctedInvoice == null) {
+            throw new InvoiceValidationException("Invoice.correctedInvoice must be present on a "
+                    + documentType + ": a note has to name the invoice it corrects");
+        }
+        if (!documentType.corrects() && correctedInvoice != null) {
+            throw new InvoiceValidationException("Invoice.correctedInvoice belongs to a credit or debit note, "
+                    + "but Invoice.documentType is " + documentType);
+        }
+    }
+
+    /**
+     * A plain {@link DocumentType#INVOICE} correcting nothing — the shape this record had before
+     * notes existed, kept so a call site written against it still compiles and still means exactly
+     * what it did.
+     */
+    public Invoice(String invoiceNumber, LocalDate issueDate, LocalDate dueDate, Currency currency,
+                   Party seller, Party buyer, List<LineItem> lineItems, Totals totals) {
+        this(invoiceNumber, issueDate, dueDate, currency, seller, buyer, lineItems, totals,
+                DocumentType.INVOICE, null);
     }
 
     public static Builder builder() {
@@ -68,6 +101,8 @@ public record Invoice(String invoiceNumber, LocalDate issueDate, LocalDate dueDa
         private Party seller;
         private Party buyer;
         private final List<LineItem> lineItems = new ArrayList<>();
+        private DocumentType documentType = DocumentType.INVOICE;
+        private DocumentReference correctedInvoice;
 
         private Builder() {
         }
@@ -119,10 +154,29 @@ public record Invoice(String invoiceNumber, LocalDate issueDate, LocalDate dueDa
             return addLineItem(new LineItem(description, quantity, unitPrice, vatCategory));
         }
 
-        /** Builds the invoice, computing {@link Totals} from the accumulated line items. */
+        /** As above, stating what the quantity is counted in — see {@link LineItem#unit()}. */
+        public Builder addLineItem(String description, BigDecimal quantity, BigDecimal unitPrice,
+                                    VatCategory vatCategory, String unit) {
+            return addLineItem(new LineItem(description, quantity, unitPrice, vatCategory, unit));
+        }
+
+        /** Defaults to {@link DocumentType#INVOICE}. */
+        public Builder documentType(DocumentType documentType) {
+            this.documentType = documentType;
+            return this;
+        }
+
+        /** The invoice this credit or debit note corrects. Required on a note, refused on an invoice. */
+        public Builder correctedInvoice(DocumentReference correctedInvoice) {
+            this.correctedInvoice = correctedInvoice;
+            return this;
+        }
+
+        /** Builds the document, computing {@link Totals} from the accumulated line items. */
         public Invoice build() {
             Totals totals = Totals.compute(lineItems);
-            return new Invoice(invoiceNumber, issueDate, dueDate, currency, seller, buyer, lineItems, totals);
+            return new Invoice(invoiceNumber, issueDate, dueDate, currency, seller, buyer, lineItems, totals,
+                    documentType, correctedInvoice);
         }
     }
 }

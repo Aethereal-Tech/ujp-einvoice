@@ -7,6 +7,8 @@ import net.aetherealtech.ujpeinvoice.internal.json.JsonValue;
 import net.aetherealtech.ujpeinvoice.internal.json.JsonWriter;
 import net.aetherealtech.ujpeinvoice.model.Address;
 import net.aetherealtech.ujpeinvoice.model.CategoryTotal;
+import net.aetherealtech.ujpeinvoice.model.DocumentReference;
+import net.aetherealtech.ujpeinvoice.model.DocumentType;
 import net.aetherealtech.ujpeinvoice.model.Invoice;
 import net.aetherealtech.ujpeinvoice.model.LineItem;
 import net.aetherealtech.ujpeinvoice.model.Party;
@@ -16,6 +18,7 @@ import net.aetherealtech.ujpeinvoice.model.VatCategory;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Renders an {@link Invoice} as the proprietary UJP e-Faktura JSON shape — the one that gets signed
@@ -31,16 +34,49 @@ import java.util.List;
  * (submission responses carrying an EUID and a QR link; error codes such as E1012 and E5004) and is
  * marked {@link ProvisionalSpec}. Treat the exact field names, nesting, and code values as a
  * starting point to validate against a real sandbox account (efakturatest.ujp.gov.mk), not as a
- * confirmed contract. See the project README's "Specification status" section for the complete
- * verified-vs-reconstructed inventory, including what is NOT reconstructed here (the VAT rates
- * themselves and the ЕДБ tax-id format are public North Macedonian tax law, independent of the UJP
- * wire format).
+ * confirmed contract. See {@code SPECS.md} for the complete verified-vs-reconstructed inventory,
+ * including what is NOT reconstructed here (the VAT rates themselves and the ЕДБ tax-id format are
+ * public North Macedonian tax law, independent of the UJP wire format).
  *
  * <p>If the real schema turns out to differ, only this class (and its golden-file tests) needs to
  * change — {@link Invoice} and everything in {@code .signing} and {@code .transport} depend on
  * {@link Serializer}, not on this shape.
  */
 public final class UjpJsonSerializer implements Serializer {
+
+    /**
+     * Nothing in any integrator account mentions how UJP distinguishes an invoice from a credit or
+     * debit note, or how a note points at what it corrects. This field name, the codes written into
+     * it, and the reference object below are therefore not even a reconstruction — they are this
+     * library's own invention, with no evidence behind them at all. They are also the first thing
+     * to correct once the official spec can be read.
+     */
+    @ProvisionalSpec("Top-level field name for the document type. This library's own naming, with no "
+            + "evidence: no integrator account describes how UJP marks a credit or debit note.")
+    private static final String FIELD_DOCUMENT_TYPE = "documentType";
+
+    /**
+     * An {@link DocumentType#INVOICE} writes no type field at all, so an invoice's JSON is byte for
+     * byte what this serializer produced before notes existed. Inventing a field and putting it on
+     * every document would have changed a shape that is already unverified, for a distinction only
+     * a note needs to draw.
+     */
+    @ProvisionalSpec("Wire codes for the two note types. This library's own naming, with no evidence.")
+    private static final Map<DocumentType, String> DOCUMENT_TYPE_CODES = Map.of(
+            DocumentType.CREDIT_NOTE, "CREDIT_NOTE",
+            DocumentType.DEBIT_NOTE, "DEBIT_NOTE");
+
+    @ProvisionalSpec("Top-level field name for the reference to the corrected invoice, present only on "
+            + "a credit or debit note. This library's own naming, with no evidence.")
+    private static final String FIELD_CORRECTED_INVOICE = "correctedInvoice";
+
+    @ProvisionalSpec("Reference field name for the corrected invoice's number. This library's own "
+            + "naming, with no evidence.")
+    private static final String FIELD_REFERENCE_NUMBER = "number";
+
+    @ProvisionalSpec("Reference field name for the corrected invoice's issue date; ISO-8601 assumed. "
+            + "This library's own naming, with no evidence.")
+    private static final String FIELD_REFERENCE_ISSUE_DATE = "issueDate";
 
     @ProvisionalSpec("Top-level field name for the invoice document number.")
     private static final String FIELD_INVOICE_NUMBER = "invoiceNumber";
@@ -94,6 +130,11 @@ public final class UjpJsonSerializer implements Serializer {
     @ProvisionalSpec("Line item field name for the quantity.")
     private static final String FIELD_LINE_QUANTITY = "quantity";
 
+    @ProvisionalSpec("Line item field name for the unit of measure, free text, omitted when absent. "
+            + "This library's own naming, with no evidence; nothing says UJP expects a unit at all, "
+            + "let alone a UN/ECE Rec 20 code.")
+    private static final String FIELD_LINE_UNIT = "unit";
+
     @ProvisionalSpec("Line item field name for the per-unit price, before VAT.")
     private static final String FIELD_LINE_UNIT_PRICE = "unitPrice";
 
@@ -144,11 +185,17 @@ public final class UjpJsonSerializer implements Serializer {
     }
 
     private JsonObject toJson(Invoice invoice) {
-        JsonObject.Builder builder = JsonObject.builder()
-                .put(FIELD_INVOICE_NUMBER, invoice.invoiceNumber())
+        JsonObject.Builder builder = JsonObject.builder();
+        if (invoice.documentType().corrects()) {
+            builder.put(FIELD_DOCUMENT_TYPE, DOCUMENT_TYPE_CODES.get(invoice.documentType()));
+        }
+        builder.put(FIELD_INVOICE_NUMBER, invoice.invoiceNumber())
                 .put(FIELD_ISSUE_DATE, invoice.issueDate().toString());
         if (invoice.dueDate() != null) {
             builder.put(FIELD_DUE_DATE, invoice.dueDate().toString());
+        }
+        if (invoice.correctedInvoice() != null) {
+            builder.put(FIELD_CORRECTED_INVOICE, toJson(invoice.correctedInvoice()));
         }
         return builder
                 .put(FIELD_CURRENCY, invoice.currency().getCurrencyCode())
@@ -159,21 +206,28 @@ public final class UjpJsonSerializer implements Serializer {
                 .build();
     }
 
-    private JsonObject toJson(Party party) {
+    private JsonObject toJson(DocumentReference reference) {
         return JsonObject.builder()
-                .put(FIELD_PARTY_NAME, party.name())
-                .put(FIELD_PARTY_TAX_ID, party.taxId())
-                .put(FIELD_PARTY_ADDRESS, toJson(party.address()))
+                .put(FIELD_REFERENCE_NUMBER, reference.number())
+                .put(FIELD_REFERENCE_ISSUE_DATE, reference.issueDate().toString())
                 .build();
     }
 
+    private JsonObject toJson(Party party) {
+        JsonObject.Builder builder = JsonObject.builder().put(FIELD_PARTY_NAME, party.name());
+        putIfPresent(builder, FIELD_PARTY_TAX_ID, party.taxId());
+        if (party.address() != null) {
+            builder.put(FIELD_PARTY_ADDRESS, toJson(party.address()));
+        }
+        return builder.build();
+    }
+
     private JsonObject toJson(Address address) {
-        return JsonObject.builder()
-                .put(FIELD_ADDRESS_STREET, address.street())
-                .put(FIELD_ADDRESS_CITY, address.city())
-                .put(FIELD_ADDRESS_POSTAL_CODE, address.postalCode())
-                .put(FIELD_ADDRESS_COUNTRY, address.country())
-                .build();
+        JsonObject.Builder builder = JsonObject.builder();
+        putIfPresent(builder, FIELD_ADDRESS_STREET, address.street());
+        putIfPresent(builder, FIELD_ADDRESS_CITY, address.city());
+        putIfPresent(builder, FIELD_ADDRESS_POSTAL_CODE, address.postalCode());
+        return builder.put(FIELD_ADDRESS_COUNTRY, address.country()).build();
     }
 
     private JsonArray lineItemsToJson(List<LineItem> lineItems) {
@@ -185,9 +239,11 @@ public final class UjpJsonSerializer implements Serializer {
     }
 
     private JsonObject toJson(LineItem lineItem) {
-        return JsonObject.builder()
+        JsonObject.Builder builder = JsonObject.builder()
                 .put(FIELD_LINE_DESCRIPTION, lineItem.description())
-                .put(FIELD_LINE_QUANTITY, lineItem.quantity())
+                .put(FIELD_LINE_QUANTITY, lineItem.quantity());
+        putIfPresent(builder, FIELD_LINE_UNIT, lineItem.unit());
+        return builder
                 .put(FIELD_LINE_UNIT_PRICE, lineItem.unitPrice())
                 .put(FIELD_LINE_VAT_CATEGORY, lineItem.vatCategory().code())
                 .put(FIELD_LINE_NET_AMOUNT, lineItem.netAmount())
@@ -218,5 +274,19 @@ public final class UjpJsonSerializer implements Serializer {
                 .put(FIELD_CATEGORY_VAT, categoryTotal.vat())
                 .put(FIELD_CATEGORY_GROSS, categoryTotal.gross())
                 .build();
+    }
+
+    /**
+     * An absent optional field is left out of the object entirely rather than written as {@code ""}
+     * or {@code null}. Which of the three UJP accepts is unknown; omission is the one that cannot be
+     * mistaken for a value the seller supplied, and it is what a natural-person buyer's missing
+     * street or tax id relies on (see {@code Party.naturalPerson}).
+     */
+    @ProvisionalSpec("Omitting an absent field, rather than writing an empty string or null, is this "
+            + "library's own choice; the gateway's tolerance for either is unverified.")
+    private static void putIfPresent(JsonObject.Builder builder, String field, String value) {
+        if (value != null) {
+            builder.put(field, value);
+        }
     }
 }

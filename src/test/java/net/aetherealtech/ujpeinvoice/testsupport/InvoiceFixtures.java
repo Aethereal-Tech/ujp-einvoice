@@ -1,6 +1,8 @@
 package net.aetherealtech.ujpeinvoice.testsupport;
 
 import net.aetherealtech.ujpeinvoice.model.Address;
+import net.aetherealtech.ujpeinvoice.model.DocumentReference;
+import net.aetherealtech.ujpeinvoice.model.DocumentType;
 import net.aetherealtech.ujpeinvoice.model.Invoice;
 import net.aetherealtech.ujpeinvoice.model.Party;
 import net.aetherealtech.ujpeinvoice.model.VatCategory;
@@ -35,6 +37,40 @@ public final class InvoiceFixtures {
                 .buyer(buyer())
                 .addLineItem("Consulting services", new BigDecimal("2"), new BigDecimal("100.00"),
                         VatCategory.STANDARD_18)
+                .build();
+    }
+
+    /**
+     * A credit note against {@link #simpleInvoice()}, crediting one of its two consulting hours.
+     * Its amounts are positive: the document type carries the direction.
+     */
+    public static Invoice creditNote() {
+        return Invoice.builder()
+                .invoiceNumber("CN-2026-0007")
+                .issueDate(LocalDate.of(2026, 9, 4))
+                .currency("MKD")
+                .seller(seller())
+                .buyer(buyer())
+                .documentType(DocumentType.CREDIT_NOTE)
+                .correctedInvoice(new DocumentReference("INV-2026-0001", LocalDate.of(2026, 8, 28)))
+                .addLineItem("Consulting services (partial credit)", new BigDecimal("1"),
+                        new BigDecimal("100.00"), VatCategory.STANDARD_18)
+                .build();
+    }
+
+    /**
+     * A retail sale to a private individual: a buyer with a name and nothing else, and a line that
+     * states its unit of measure. Every field the buyer does not have is absent from the wire.
+     */
+    public static Invoice consumerInvoice() {
+        return Invoice.builder()
+                .invoiceNumber("INV-2026-0003")
+                .issueDate(LocalDate.of(2026, 9, 4))
+                .currency("MKD")
+                .seller(seller())
+                .buyer(Party.naturalPerson("Ана Ангеловска"))
+                .addLineItem("Подни плочки", new BigDecimal("12"), new BigDecimal("300.00"),
+                        VatCategory.STANDARD_18, "м²")
                 .build();
     }
 

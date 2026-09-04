@@ -12,10 +12,9 @@ import java.net.URI;
  * assembled from hands-on Macedonian integrator accounts describing the {@code /JSONReceiver/...}
  * family of endpoints exercised against {@code efakturatest.ujp.gov.mk}; the official source —
  * efakturawiki.ujp.gov.mk's "API Спецификација" — is unreachable outside North Macedonian networks
- * and has not been read by anyone who built this library. See the README's "Specification status"
- * section for the full verified-vs-reconstructed inventory and {@code CLAUDE.md} for the rule that
- * nothing here may be marked verified without citing the specific section of the official spec that
- * confirms it.
+ * and has not been read by anyone who built this library. See {@code SPECS.md} for the full
+ * verified-vs-reconstructed inventory and {@code CLAUDE.md} for the rule that nothing here may be
+ * marked verified without citing the specific section of the official spec that confirms it.
  */
 public final class UjpEndpoints {
 

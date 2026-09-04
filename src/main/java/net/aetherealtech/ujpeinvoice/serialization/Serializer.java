@@ -5,9 +5,9 @@ import net.aetherealtech.ujpeinvoice.model.Invoice;
 /**
  * Turns an {@link Invoice} into the bytes a gateway expects on the wire.
  *
- * <p>One implementation ships with this library: {@link UjpJsonSerializer}, whose javadoc and the
- * project README's "Specification status" section explain exactly which parts of its output are
- * confirmed against the official UJP schema and which are this library's best reconstruction.
+ * <p>One implementation ships with this library: {@link UjpJsonSerializer}, whose javadoc and
+ * {@code SPECS.md}'s "Specification inventory" section explain exactly which parts of its output
+ * are confirmed against the official UJP schema and which are this library's best reconstruction.
  *
  * <p>This interface is the seam that keeps that uncertainty from spreading. A corrected schema, or
  * an entirely different wire format such as UBL 2.1, is a new implementation of {@code Serializer} —
