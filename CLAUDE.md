@@ -59,3 +59,8 @@ reconsider before proceeding.
 `publish.yml` derives the version from conventional commit types since the last tag. A commit that
 should not cut a release (docs, ci, chore, test, style with no accompanying fix/feat) should be typed
 accordingly — the workflow trusts the commit type, not a judgment call at merge time.
+
+**A merge is not finished until the branch is gone and the issue is closed** — delete the merged
+branch, local and remote, in the same step as the merge, and close every GitHub issue it resolved,
+naming the pull request or commit in the comment. Merged branches only: a parked branch stays until
+its work lands. An outliving branch gets built on by mistake; an outliving issue gets planned twice.
