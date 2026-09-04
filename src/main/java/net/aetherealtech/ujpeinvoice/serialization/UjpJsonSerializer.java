@@ -7,6 +7,8 @@ import net.aetherealtech.ujpeinvoice.internal.json.JsonValue;
 import net.aetherealtech.ujpeinvoice.internal.json.JsonWriter;
 import net.aetherealtech.ujpeinvoice.model.Address;
 import net.aetherealtech.ujpeinvoice.model.CategoryTotal;
+import net.aetherealtech.ujpeinvoice.model.DocumentReference;
+import net.aetherealtech.ujpeinvoice.model.DocumentType;
 import net.aetherealtech.ujpeinvoice.model.Invoice;
 import net.aetherealtech.ujpeinvoice.model.LineItem;
 import net.aetherealtech.ujpeinvoice.model.Party;
@@ -16,6 +18,7 @@ import net.aetherealtech.ujpeinvoice.model.VatCategory;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Renders an {@link Invoice} as the proprietary UJP e-Faktura JSON shape — the one that gets signed
@@ -41,6 +44,40 @@ import java.util.List;
  * {@link Serializer}, not on this shape.
  */
 public final class UjpJsonSerializer implements Serializer {
+
+    /**
+     * Nothing in any integrator account mentions how UJP distinguishes an invoice from a credit or
+     * debit note, or how a note points at what it corrects. This field name, the codes written into
+     * it, and the reference object below are therefore not even a reconstruction — they are this
+     * library's own invention, with no evidence behind them at all. They are also the first thing
+     * to correct once the official spec can be read.
+     */
+    @ProvisionalSpec("Top-level field name for the document type. This library's own naming, with no "
+            + "evidence: no integrator account describes how UJP marks a credit or debit note.")
+    private static final String FIELD_DOCUMENT_TYPE = "documentType";
+
+    /**
+     * An {@link DocumentType#INVOICE} writes no type field at all, so an invoice's JSON is byte for
+     * byte what this serializer produced before notes existed. Inventing a field and putting it on
+     * every document would have changed a shape that is already unverified, for a distinction only
+     * a note needs to draw.
+     */
+    @ProvisionalSpec("Wire codes for the two note types. This library's own naming, with no evidence.")
+    private static final Map<DocumentType, String> DOCUMENT_TYPE_CODES = Map.of(
+            DocumentType.CREDIT_NOTE, "CREDIT_NOTE",
+            DocumentType.DEBIT_NOTE, "DEBIT_NOTE");
+
+    @ProvisionalSpec("Top-level field name for the reference to the corrected invoice, present only on "
+            + "a credit or debit note. This library's own naming, with no evidence.")
+    private static final String FIELD_CORRECTED_INVOICE = "correctedInvoice";
+
+    @ProvisionalSpec("Reference field name for the corrected invoice's number. This library's own "
+            + "naming, with no evidence.")
+    private static final String FIELD_REFERENCE_NUMBER = "number";
+
+    @ProvisionalSpec("Reference field name for the corrected invoice's issue date; ISO-8601 assumed. "
+            + "This library's own naming, with no evidence.")
+    private static final String FIELD_REFERENCE_ISSUE_DATE = "issueDate";
 
     @ProvisionalSpec("Top-level field name for the invoice document number.")
     private static final String FIELD_INVOICE_NUMBER = "invoiceNumber";
@@ -144,11 +181,17 @@ public final class UjpJsonSerializer implements Serializer {
     }
 
     private JsonObject toJson(Invoice invoice) {
-        JsonObject.Builder builder = JsonObject.builder()
-                .put(FIELD_INVOICE_NUMBER, invoice.invoiceNumber())
+        JsonObject.Builder builder = JsonObject.builder();
+        if (invoice.documentType().corrects()) {
+            builder.put(FIELD_DOCUMENT_TYPE, DOCUMENT_TYPE_CODES.get(invoice.documentType()));
+        }
+        builder.put(FIELD_INVOICE_NUMBER, invoice.invoiceNumber())
                 .put(FIELD_ISSUE_DATE, invoice.issueDate().toString());
         if (invoice.dueDate() != null) {
             builder.put(FIELD_DUE_DATE, invoice.dueDate().toString());
+        }
+        if (invoice.correctedInvoice() != null) {
+            builder.put(FIELD_CORRECTED_INVOICE, toJson(invoice.correctedInvoice()));
         }
         return builder
                 .put(FIELD_CURRENCY, invoice.currency().getCurrencyCode())
@@ -156,6 +199,13 @@ public final class UjpJsonSerializer implements Serializer {
                 .put(FIELD_BUYER, toJson(invoice.buyer()))
                 .put(FIELD_LINE_ITEMS, lineItemsToJson(invoice.lineItems()))
                 .put(FIELD_TOTALS, toJson(invoice.totals()))
+                .build();
+    }
+
+    private JsonObject toJson(DocumentReference reference) {
+        return JsonObject.builder()
+                .put(FIELD_REFERENCE_NUMBER, reference.number())
+                .put(FIELD_REFERENCE_ISSUE_DATE, reference.issueDate().toString())
                 .build();
     }
 

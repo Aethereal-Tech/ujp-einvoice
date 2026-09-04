@@ -179,6 +179,75 @@ class InvoiceTest {
     }
 
     @Test
+    void defaultsToAPlainInvoiceCorrectingNothing() {
+        Invoice invoice = invoiceBuilder("INV-12").build();
+
+        assertThat(invoice.documentType()).isEqualTo(DocumentType.INVOICE);
+        assertThat(invoice.correctedInvoice()).isNull();
+    }
+
+    @Test
+    void theEightArgumentConstructorStillBuildsAPlainInvoice() {
+        List<LineItem> items = List.of(
+                new LineItem("A", BigDecimal.ONE, BigDecimal.TEN, VatCategory.STANDARD_18));
+
+        Invoice invoice = new Invoice("INV-13", LocalDate.of(2026, 1, 1), null, Currency.getInstance("MKD"),
+                SELLER, BUYER, items, Totals.compute(items));
+
+        assertThat(invoice.documentType()).isEqualTo(DocumentType.INVOICE);
+        assertThat(invoice.correctedInvoice()).isNull();
+    }
+
+    @Test
+    void aCreditNoteCarriesTheInvoiceItCorrects() {
+        DocumentReference corrected = new DocumentReference("INV-1", LocalDate.of(2026, 1, 1));
+
+        Invoice note = invoiceBuilder("CN-1")
+                .documentType(DocumentType.CREDIT_NOTE)
+                .correctedInvoice(corrected)
+                .build();
+
+        assertThat(note.documentType()).isEqualTo(DocumentType.CREDIT_NOTE);
+        assertThat(note.correctedInvoice()).isEqualTo(corrected);
+    }
+
+    @Test
+    void aNotesAmountsStayPositive() {
+        Invoice note = invoiceBuilder("DN-1")
+                .documentType(DocumentType.DEBIT_NOTE)
+                .correctedInvoice(new DocumentReference("INV-1", LocalDate.of(2026, 1, 1)))
+                .build();
+
+        // The type carries the direction; the totals rules are the same ones an invoice uses.
+        assertThat(note.totals().grossTotal()).isPositive();
+        assertThat(note.totals().reconciles(note.lineItems())).isTrue();
+    }
+
+    @Test
+    void rejectsANoteWithNoCorrectedInvoice() {
+        assertThatThrownBy(() -> invoiceBuilder("CN-2").documentType(DocumentType.CREDIT_NOTE).build())
+                .isInstanceOf(InvoiceValidationException.class)
+                .hasMessageContaining("Invoice.correctedInvoice")
+                .hasMessageContaining("CREDIT_NOTE");
+    }
+
+    @Test
+    void rejectsAPlainInvoiceThatCorrectsSomething() {
+        assertThatThrownBy(() -> invoiceBuilder("INV-14")
+                .correctedInvoice(new DocumentReference("INV-1", LocalDate.of(2026, 1, 1)))
+                .build())
+                .isInstanceOf(InvoiceValidationException.class)
+                .hasMessageContaining("Invoice.correctedInvoice");
+    }
+
+    @Test
+    void rejectsAMissingDocumentType() {
+        assertThatThrownBy(() -> invoiceBuilder("INV-15").documentType(null).build())
+                .isInstanceOf(InvoiceValidationException.class)
+                .hasMessageContaining("Invoice.documentType");
+    }
+
+    @Test
     void lineItemsAreDefensivelyCopied() {
         Invoice invoice = Invoice.builder()
                 .invoiceNumber("INV-11")
@@ -192,5 +261,15 @@ class InvoiceTest {
         assertThatThrownBy(() -> invoice.lineItems().add(
                 new LineItem("B", BigDecimal.ONE, BigDecimal.TEN, VatCategory.STANDARD_18)))
                 .isInstanceOf(UnsupportedOperationException.class);
+    }
+
+    private static Invoice.Builder invoiceBuilder(String number) {
+        return Invoice.builder()
+                .invoiceNumber(number)
+                .issueDate(LocalDate.of(2026, 1, 1))
+                .currency("MKD")
+                .seller(SELLER)
+                .buyer(BUYER)
+                .addLineItem("A", BigDecimal.ONE, BigDecimal.TEN, VatCategory.STANDARD_18);
     }
 }
