@@ -8,61 +8,67 @@ targeting JDK 25+.
 the Republic of North Macedonia).** It is an independent, best-effort client built from public
 research. Read the section below before using it against anything but a sandbox.
 
+**`SPECS.md` is the record** — the full model surface, the complete provisional field inventory, the
+signing entry points, and the planned work with what each item waits on. `CLAUDE.md` is the rules
+for working here. This README is the short version.
+
 ## Specification status
 
 This is the most important section in this README. The authoritative source for the UJP e-Faktura
-wire format — efakturawiki.ujp.gov.mk's "API Спецификација" — is **unreachable outside North
-Macedonian networks**, and nobody who built this library has read it. Everything here was
-reconstructed from public desk research and hands-on accounts from Macedonian integrators (forum
-posts, blog write-ups, and support-channel screenshots), as of 2026-08-28. Treat all of it as a
-starting point to validate against a real sandbox account, not as a confirmed contract.
+wire format — efakturawiki.ujp.gov.mk's „API Спецификација" — is **unreachable outside North
+Macedonian networks, and nobody who built this library has read it.** Everything was reconstructed
+from public desk research and hands-on accounts from Macedonian integrators (forum posts, blog
+write-ups, and support-channel screenshots), as of 2026-08-28. Treat all of it as a starting point
+to validate against a real sandbox account, not as a confirmed contract.
 
-| Area | Status | Basis |
-|---|---|---|
-| Wire format is a proprietary UJP JSON schema, signed as compact JWS (RS256) | **Reconstructed, moderate confidence** | Consistent across multiple independent integrator accounts |
-| Wire format is **not** UBL 2.1 / XAdES | **Reconstructed, moderate confidence** | Contradicts generic e-invoicing compliance sites, which appear to describe the EU norm generically rather than UJP's actual endpoint |
-| Submission returns an EUID and a QR verification link | **Reconstructed, moderate confidence** | Reported by integrators |
-| Endpoint family `/JSONReceiver/sales-invoices/...` on `efakturatest.ujp.gov.mk` | **Reconstructed, moderate confidence** | Reported by integrators |
-| Exact JSON field names (`invoiceNumber`, `seller`, `lineItems`, ...) | **Reconstructed, low confidence** | This library's own best-effort naming; see every field marked `@ProvisionalSpec` in `UjpJsonSerializer` |
-| Status-polling endpoint path | **Reconstructed, very low confidence** | Guessed by analogy with the submit endpoint; no direct evidence found |
-| Production base URL | **Reconstructed, very low confidence** | Inferred by removing "test" from the sandbox hostname |
-| Error codes E1012 (certificate not pre-registered), E5004, E10001–E10003 exist | **Reconstructed, moderate confidence** | Codes observed in integrator reports |
-| Meaning of E5004 and E10001–E10003 specifically | **Unknown** | Codes were seen; no confirmed explanation of what triggers them was found |
-| Cert-based auth requires a KIBS- or Telekom-issued qualified certificate, pre-registered at `eujptest.ujp.gov.mk/ureg` | **Reconstructed, moderate confidence** | Reported by integrators |
-| MK VAT rates: 18% standard, 10% and 5% reduced, 0% zero-rated, plus an exempt category | **Verified** | Public tax law (Law on Value Added Tax), independent of the UJP wire format |
-| ЕДБ (unique tax number) as the party identifier | **Verified concept, format not enforced** | Public, well-known identifier; this library requires it be present but does not enforce a 13-digit format, to avoid rejecting legitimate edge cases this library cannot fully confirm |
+The summary below is deliberately short; **`SPECS.md` carries the complete inventory**, field by
+field and endpoint by endpoint.
+
+| Area | Status |
+|---|---|
+| Wire format is a proprietary UJP JSON schema, signed as compact JWS (RS256), **not** UBL 2.1 / XAdES | Reconstructed, moderate confidence |
+| Submission returns an EUID and a QR verification link | Reconstructed, moderate confidence |
+| Endpoint family `/JSONReceiver/sales-invoices/...` on `efakturatest.ujp.gov.mk` | Reconstructed, moderate confidence |
+| Status-polling path, and the production base URL | Reconstructed, very low confidence — one guessed by analogy, the other inferred from the sandbox hostname |
+| Exact JSON field names (`invoiceNumber`, `seller`, `lineItems`, ...) | Reconstructed, low confidence — this library's own naming |
+| Document type field and its note codes (`documentType`, `CREDIT_NOTE`, `DEBIT_NOTE`) | Reconstructed, low confidence — this library's own naming. Nothing describes how UJP marks a note; an ordinary invoice writes no type field at all |
+| Corrected-invoice reference (`correctedInvoice`, carrying `number` and `issueDate`) | Reconstructed, low confidence — this library's own naming |
+| Line-item unit of measure (`unit`, free text) | Reconstructed, low confidence — this library's own naming. Nothing says UJP expects a unit at all, let alone a code from a list |
+| Omitting an absent field entirely — a natural-person buyer's missing tax id, street, postal code or city — rather than writing `""` or `null` | Reconstructed, low confidence — this library's own choice; the gateway's tolerance for either is unverified |
+| Error codes E1012, E5004, E10001–E10003 exist | Reconstructed, moderate confidence |
+| Meaning of E5004 and E10001–E10003 specifically | **Unknown** |
+| Cert-based auth needs a KIBS- or Telekom-issued qualified certificate, pre-registered at `eujptest.ujp.gov.mk/ureg` | Reconstructed, moderate confidence |
+| MK VAT rates: 18% standard, 10% and 5% reduced, 0% zero-rated, plus an exempt category | **Verified** — public tax law, independent of the wire format |
+| ЕДБ (unique tax number) as the party identifier | **Verified concept, format deliberately not enforced** |
 
 Every reconstructed field, endpoint, and code in the source carries a `@ProvisionalSpec` annotation
 (source-retention, for readers) or an explicit "PROVISIONAL" note in its javadoc. See `CLAUDE.md` for
 the rule governing when something may be promoted from provisional to verified.
 
-**If you have read the official spec and can confirm or correct any of the above, please open an
-issue or PR citing the specific section.** That is the single most valuable contribution this project
-can receive right now.
+**If you are on the team and get to read the official spec, correct the inventory in `SPECS.md`,
+citing the specific section.** That is worth more than anything else in the backlog.
 
-### Mandate timeline
-
-Also unverified beyond public announcements, and worth stating plainly because it affects how urgent
-any of this is:
-
-- **October 2026** — voluntary go-live is the publicly stated target.
-- **April 2027** — e-invoicing is expected to become mandatory for VAT payers, but the enabling law
-  may still be in draft as of this writing. Treat "April 2027" as the planning assumption, not a
-  confirmed legal deadline.
+The mandate timeline — October 2026 voluntary, April 2027 mandatory — is a planning assumption, not
+a confirmed legal deadline. See `SPECS.md` § FUTURE.
 
 ## Architecture
 
 Three independent layers, so a corrected spec touches as little as possible:
 
 ```
-model            Invoice, Party, LineItem, VatCategory, Totals — no knowledge that JSON exists.
+model            Invoice, Party, Address, LineItem, VatCategory, Totals, DocumentType,
+  |              DocumentReference — no knowledge that JSON exists. An Invoice is a plain invoice
+  |              by default, or a credit/debit note naming the invoice it corrects. A Party is a
+  |              company (name + ЕДБ + complete address) or a natural person (a name, and nothing
+  |              else that is required).
   |
 serialization    Serializer interface. UjpJsonSerializer is the one shipped implementation of the
   |              reconstructed wire shape above. A UBL serializer, or a corrected JSON shape, is a
   |              new implementation of Serializer — not a change to `model`.
   |
-signing          Signer interface. JwsRs256Signer signs with JDK-only primitives (java.security).
-  |              Pkcs12KeyStores / Pkcs11KeyStores load the private key.
+signing          Signer interface. JwsRs256Signer signs with JDK-only primitives (java.security),
+  |              holds no static state, and is built per organization from that organization's own
+  |              keystore. Pkcs12KeyStores / Pkcs11KeyStores load the private key.
   |
 transport        UjpClient (java.net.http) composes a Serializer and a Signer to submit and poll.
                  Every endpoint path lives in UjpEndpoints, whose javadoc restates the caveat above.
@@ -75,11 +81,10 @@ import net.aetherealtech.ujpeinvoice.model.*;
 import net.aetherealtech.ujpeinvoice.serialization.UjpJsonSerializer;
 import net.aetherealtech.ujpeinvoice.signing.JwsRs256Signer;
 import net.aetherealtech.ujpeinvoice.signing.Pkcs12KeyStores;
+import net.aetherealtech.ujpeinvoice.signing.SigningCredential;
 import net.aetherealtech.ujpeinvoice.transport.*;
 
 import java.math.BigDecimal;
-import java.nio.file.Path;
-import java.security.PrivateKey;
 import java.time.LocalDate;
 
 // 1. Build the invoice. Totals are computed from the line items — there is no way to hand-construct
@@ -88,22 +93,44 @@ Invoice invoice = Invoice.builder()
         .invoiceNumber("INV-2026-0001")
         .issueDate(LocalDate.now())
         .currency("MKD")
-        .seller(new Party("Seller DOOEL", "4030012345678",
+        .seller(Party.company("Seller DOOEL", "4030012345678",
                 new Address("Bul. Partizanski Odredi 1", "Skopje", "1000", "MK")))
-        .buyer(new Party("Buyer DOO", "4057098765432",
+        .buyer(Party.company("Buyer DOO", "4057098765432",
                 new Address("Ul. Makedonija 10", "Bitola", "7000", "MK")))
         .addLineItem("Consulting services", new BigDecimal("2"), new BigDecimal("100.00"),
                 VatCategory.STANDARD_18)
         .build();
 
-// 2. Load the signing key. From a PKCS#12 export...
-PrivateKey key = Pkcs12KeyStores.loadPrivateKey(Path.of("signing-cert.p12"), "password".toCharArray(), "alias");
-// ...or from a USB qualified-certificate token via PKCS#11 — see Pkcs11KeyStores' javadoc.
+// A private individual buys with a name and nothing else — no ЕДБ, and no address required. Any
+// part of an address that IS on record can be given; an absent country reads as "MK".
+Party consumer = Party.naturalPerson("Ана Ангеловска");
+Party consumerWithCityOnly = Party.naturalPerson("Ана Ангеловска",
+        new Address(null, "Битола", null, null));
+
+// A credit note („книжно одобрение") must name the invoice it corrects. Its amounts stay positive:
+// the document type carries the direction. A line may state its unit — free text, omitted if absent.
+Invoice creditNote = Invoice.builder()
+        .invoiceNumber("CN-2026-0007")
+        .issueDate(LocalDate.now())
+        .currency("MKD")
+        .seller(invoice.seller())
+        .buyer(invoice.buyer())
+        .documentType(DocumentType.CREDIT_NOTE)
+        .correctedInvoice(new DocumentReference("INV-2026-0001", LocalDate.of(2026, 8, 28)))
+        .addLineItem("Consulting services (partial credit)", BigDecimal.ONE, new BigDecimal("100.00"),
+                VatCategory.STANDARD_18, "час")
+        .build();
+
+// 2. Load the signing key. One keystore per organization, straight from bytes — nothing touches
+//    disk, and the single private key entry is found without being told its alias.
+SigningCredential credential = Pkcs12KeyStores.load(p12Bytes, password);
+// ...an InputStream works the same way (read fully, and left open for its owner to close), as does
+// a Path. For a qualified certificate on its issuing USB token, see Pkcs11KeyStores.
 
 // 3. Submit against the sandbox (UjpClient defaults to UjpEndpoints.TEST_BASE_URL).
 UjpClient client = UjpClient.builder()
         .serializer(new UjpJsonSerializer())
-        .signer(new JwsRs256Signer(key))
+        .signer(new JwsRs256Signer(credential.privateKey(), credential.certificateChain()))
         .build();
 
 try {
@@ -113,6 +140,9 @@ try {
     System.err.println("Rejected: " + e.errorCode() + " — " + e.getMessage());
 }
 ```
+
+A `JwsRs256Signer` is an instance holding no JVM-global state, so a process serving many
+organizations builds one per organization and each signs with its own key.
 
 ## Certificate registration prerequisite
 
@@ -124,9 +154,15 @@ that signs correctly but was never registered there is the likely cause of error
 
 ## Consuming this library (GitHub Packages)
 
-This package is published to GitHub Packages, which — unlike Maven Central — **requires
-authentication to download even public packages**. You need a GitHub personal access token with at
-least `read:packages` scope, even just to depend on this library.
+**This is a private repository, and the package is private with it.** A GitHub token is required on
+every request — there is no anonymous read, of this or of any GitHub Packages artifact — and the
+token must additionally carry access to the Aethereal-Tech organization's private repositories.
+Either kind works:
+
+- a **classic** personal access token with `read:packages` **and** `repo` — GitHub Packages resolves
+  private-package access through repository access, so `read:packages` on its own is refused; or
+- a **fine-grained** personal access token granted this repository, with *Contents: Read* and
+  *Packages: Read*.
 
 Add the repository:
 
@@ -159,6 +195,19 @@ project's own `pom.xml`):
     </servers>
 </settings>
 ```
+
+### From a consuming repository's Actions
+
+A workflow's built-in `GITHUB_TOKEN` reaches only its own repository's packages. For a consuming
+repository, either:
+
+- grant that repository read access in this package's settings — the package page's **Manage Actions
+  access** — after which its `GITHUB_TOKEN` resolves the dependency; or
+- store a token of the kind described above as a secret in the consuming repository, and pass it to
+  Maven instead.
+
+Every Maven step that resolves this dependency needs those credentials, in CI as much as locally: a
+job that runs `mvn` without them fails at dependency resolution, not at some later step.
 
 ## Building from source
 

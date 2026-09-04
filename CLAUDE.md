@@ -2,6 +2,8 @@
 
 Conventions for working in this repository.
 
+**`SPECS.md` is the record of what exists; this file is the rules.**
+
 ## What this is
 
 A Java library for the North Macedonian UJP e-Faktura e-invoicing gateway. Large parts of the wire
