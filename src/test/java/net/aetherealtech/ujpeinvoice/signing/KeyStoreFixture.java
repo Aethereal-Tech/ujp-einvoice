@@ -58,6 +58,15 @@ final class KeyStoreFixture {
         return Files.readAllBytes(path());
     }
 
+    /**
+     * A second, unrelated keystore ({@code test-signing-key-2.p12}, alias {@code ujp-test-2}, same
+     * password) — one organization's credential standing in for another's, so a test can prove two
+     * signers in one JVM keep their own keys.
+     */
+    static byte[] secondaryBytes() throws Exception {
+        return Files.readAllBytes(resourcePath("/test-signing-key-2.p12"));
+    }
+
     /** A PKCS#12 keystore holding no entries at all. */
     static byte[] withoutAnyKeyEntry() throws Exception {
         return serialize(emptyKeyStore());
