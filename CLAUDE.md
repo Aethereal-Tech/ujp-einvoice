@@ -10,9 +10,11 @@ its spec in the same commit as the code, and `openspec validate --all --strict` 
 
 ## What this is
 
-A Java library for the North Macedonian UJP e-Faktura e-invoicing gateway. Large parts of the wire
-format are **reconstructed, not verified** — see `openspec/specs/specification-status/spec.md` before
-touching `serialization/`, `transport/`, or anything marked `@ProvisionalSpec`.
+A Java library for the North Macedonian UJP e-Faktura e-invoicing gateway. The published 0.2.0's wire
+layer is **known-wrong, not merely unverified** — it was compared against the official specification on
+2026-09-13 and would be rejected at the gateway's first validation step, so **0.2.0 must not be used to
+file**. Read `openspec/specs/specification-status/spec.md` before touching `serialization/`,
+`transport/`, or anything marked `@ProvisionalSpec`.
 
 ## The one hard rule
 
@@ -20,9 +22,9 @@ touching `serialization/`, `transport/`, or anything marked `@ProvisionalSpec`.
 without citing the specific section of the official spec (efakturawiki.ujp.gov.mk's
 "API Спецификација") that confirms it.** A sandbox account behaving as expected is evidence, not
 confirmation — integrators' own reconstructions have been self-consistent and still wrong before.
-"I tested it against efakturatest and it worked" is not a citation. If you gain access to the actual
-spec, cite the section, update the field/endpoint, remove its `@ProvisionalSpec` marker, and update
-`openspec/specs/specification-status/spec.md` in the same change.
+"I tested it against efakturatest and it worked" is not a citation. The specification has now been
+obtained, so citing it is possible: cite the section, update the field/endpoint, remove its
+`@ProvisionalSpec` marker, and update `openspec/specs/specification-status/spec.md` in the same change.
 
 ## Architecture
 
