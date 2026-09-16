@@ -7,7 +7,7 @@ import java.math.BigDecimal;
  * reduced rates, the zero rate, and the VAT-exempt category.
  *
  * <p>The rates themselves (18%, 10%, 5%, 0%) are public tax law, not part of the unverified UJP
- * e-Faktura wire format — see the "Specification inventory" section of {@code SPECS.md}. What is
+ * e-Faktura wire format — see {@code openspec/specs/specification-status/spec.md}. What is
  * genuinely unverified is how a category is <em>named</em> on the wire; {@link #code()} is this
  * library's best-effort reconstruction and is marked accordingly in {@code UjpJsonSerializer}.
  */

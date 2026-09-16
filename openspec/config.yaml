@@ -1,0 +1,45 @@
+schema: spec-driven
+
+context: |
+  ujp-einvoice (`net.aetherealtech:ujp-einvoice`): a Java 25 library for North Macedonia's UJP e-Faktura
+  e-invoicing gateway. Four independent layers — `model` (the serialization-agnostic `Invoice` domain, depending on
+  nothing), `serialization` (a `Serializer` interface and its one shipped implementation, `UjpJsonSerializer`,
+  depending on `model` only), `signing` (a `Signer` interface, `JwsRs256Signer` doing compact JWS RS256 with
+  PKCS#12/PKCS#11 credential loading, depending on JDK `java.security` only), and `transport` (`UjpClient` and
+  `UjpEndpoints`, depending on `Serializer` and `Signer` as interfaces, never on their implementations). Money math
+  is `BigDecimal`, `RoundingMode.HALF_UP`, scale 2, through the single `internal.Money.round`. Zero runtime
+  dependencies, `--release 25`, published to GitHub Packages. Not affiliated with, endorsed by, or reviewed by УЈП.
+  Most of the wire format is independently RECONSTRUCTED from third-party integrator reports (forum posts, blog
+  write-ups, support-channel screenshots) rather than read from the official „API Спецификација" at
+  efakturawiki.ujp.gov.mk, which is unreachable outside North Macedonian networks and has not been read by anyone
+  who built this library — the `specification-status` capability is the record of exactly which parts. CLAUDE.md
+  holds every rule that binds a change; the hard rule it carries is that nothing marked `@ProvisionalSpec` may be
+  promoted to verified without citing the specific section of the official spec that confirms it — a sandbox
+  account behaving as expected is evidence, not confirmation. These specs are the record of what is built, keeping
+  every field name, error code, Macedonian term and confidence level a reader would otherwise have to re-derive.
+  Conventional commits; commits carry no AI attribution.
+  A change's Status carries one of three tags: CUT means decided against, do not re-propose (those live in
+  openspec/specs/product-boundaries, never as changes); PARKED may return and states the condition that reopens
+  it; a change with neither tag is simply not built yet. Every change names who owns its prerequisite.
+
+rules:
+  proposal:
+    - 'Carry a "## Status" section carrying the tag (PARKED, CUT or none), why it waits, what reopens it and who owns the prerequisite.'
+    - Never re-propose what openspec/specs/product-boundaries records as decided against.
+  specs:
+    - Keep the reasoning under each requirement as prose; the record holds what a reader cannot see by opening a class.
+    - Names, field names, error codes, Macedonian terms, numbers and confidence levels stay verbatim.
+    - SHALL or MUST in the requirement sentence; scenarios are the source's own concrete cases, never invented ones.
+  design:
+    - A decision the maintainers have already taken is recorded as taken, with its date, and is not reopened.
+    - A new runtime dependency, or a change to the JaCoCo gate, needs the maintainer's explicit ask (CLAUDE.md).
+  tasks:
+    - Every task names how it is verified, the test that fails without it and the tier it runs in.
+
+operations:
+  apply:
+    guidance:
+      - Before reporting a task done, run `./mvnw clean verify` and say what was not run.
+  archive:
+    guidance:
+      - Archive in the same commit that ships the change, then run openspec validate --all --strict.
