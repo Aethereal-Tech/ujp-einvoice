@@ -6,7 +6,7 @@ import net.aetherealtech.ujpeinvoice.model.Invoice;
  * Turns an {@link Invoice} into the bytes a gateway expects on the wire.
  *
  * <p>One implementation ships with this library: {@link UjpJsonSerializer}, whose javadoc and
- * {@code SPECS.md}'s "Specification inventory" section explain exactly which parts of its output
+ * {@code openspec/specs/specification-status/spec.md} explain exactly which parts of its output
  * are confirmed against the official UJP schema and which are this library's best reconstruction.
  *
  * <p>This interface is the seam that keeps that uncertainty from spreading. A corrected schema, or

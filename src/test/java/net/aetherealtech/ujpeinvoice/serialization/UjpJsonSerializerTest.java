@@ -22,8 +22,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Golden-file tests: the serializer's output for a fixed input must match byte-for-byte, so any
  * accidental change to field names, ordering, or number formatting is caught here rather than
  * discovered against a live sandbox. See src/test/resources/golden — regenerate deliberately (not
- * by hand-editing) if a field genuinely needs to change, and update {@code SPECS.md}'s
- * specification inventory in the same change.
+ * by hand-editing) if a field genuinely needs to change, and update
+ * {@code openspec/specs/specification-status/spec.md} in the same change.
  */
 class UjpJsonSerializerTest {
 

@@ -2,12 +2,16 @@
 
 Conventions for working in this repository.
 
-**`SPECS.md` is the record of what exists; this file is the rules.**
+**The record of what exists is `openspec/`** — `specs/<capability>/spec.md` holds the model surface, the
+specification-status inventory and every other built fact with its reasoning; `changes/<name>/` the planned work,
+why it waits and who owns its prerequisite; this file is the rules alone. A new rule or invariant is written into
+its spec in the same commit as the code, and `openspec validate --all --strict` must pass before a commit — see
+"Before a commit" below.
 
 ## What this is
 
 A Java library for the North Macedonian UJP e-Faktura e-invoicing gateway. Large parts of the wire
-format are **reconstructed, not verified** — see the README's "Specification status" section before
+format are **reconstructed, not verified** — see `openspec/specs/specification-status/spec.md` before
 touching `serialization/`, `transport/`, or anything marked `@ProvisionalSpec`.
 
 ## The one hard rule
@@ -18,7 +22,7 @@ without citing the specific section of the official spec (efakturawiki.ujp.gov.m
 confirmation — integrators' own reconstructions have been self-consistent and still wrong before.
 "I tested it against efakturatest and it worked" is not a citation. If you gain access to the actual
 spec, cite the section, update the field/endpoint, remove its `@ProvisionalSpec` marker, and update
-the README's inventory in the same change.
+`openspec/specs/specification-status/spec.md` in the same change.
 
 ## Architecture
 
@@ -53,6 +57,16 @@ reconsider before proceeding.
   `transport` is proven through WireMock instead, not chased to the same number.
   `signing.Pkcs11KeyStores` is excluded from the gate — it needs a physical hardware token no CI
   runner has; keep it that way rather than deleting the exclusion to force coverage up.
+
+## Before a commit
+
+```bash
+./mvnw clean verify
+openspec validate --all --strict
+```
+
+Both must pass. A new rule or invariant discovered while making a change belongs in the relevant
+`openspec/specs/<capability>/spec.md` in the same commit as the code, not left for later.
 
 ## Before publishing a release
 

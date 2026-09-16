@@ -34,9 +34,10 @@ import java.util.Map;
  * (submission responses carrying an EUID and a QR link; error codes such as E1012 and E5004) and is
  * marked {@link ProvisionalSpec}. Treat the exact field names, nesting, and code values as a
  * starting point to validate against a real sandbox account (efakturatest.ujp.gov.mk), not as a
- * confirmed contract. See {@code SPECS.md} for the complete verified-vs-reconstructed inventory,
- * including what is NOT reconstructed here (the VAT rates themselves and the ЕДБ tax-id format are
- * public North Macedonian tax law, independent of the UJP wire format).
+ * confirmed contract. See {@code openspec/specs/specification-status/spec.md} for the complete
+ * verified-vs-reconstructed inventory, including what is NOT reconstructed here (the VAT rates
+ * themselves and the ЕДБ tax-id format are public North Macedonian tax law, independent of the UJP
+ * wire format).
  *
  * <p>If the real schema turns out to differ, only this class (and its golden-file tests) needs to
  * change — {@link Invoice} and everything in {@code .signing} and {@code .transport} depend on

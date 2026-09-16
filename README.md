@@ -8,9 +8,9 @@ targeting JDK 25+.
 the Republic of North Macedonia).** It is an independent, best-effort client built from public
 research. Read the section below before using it against anything but a sandbox.
 
-**`SPECS.md` is the record** — the full model surface, the complete provisional field inventory, the
-signing entry points, and the planned work with what each item waits on. `CLAUDE.md` is the rules
-for working here. This README is the short version.
+**`openspec/` is the record** — `openspec/specs/` holds the full model surface, the complete provisional field
+inventory, and the signing entry points; `openspec/changes/` holds the planned work with what each item waits on.
+`CLAUDE.md` is the rules for working here. This README is the short version.
 
 ## Specification status
 
@@ -21,8 +21,8 @@ from public desk research and hands-on accounts from Macedonian integrators (for
 write-ups, and support-channel screenshots), as of 2026-08-28. Treat all of it as a starting point
 to validate against a real sandbox account, not as a confirmed contract.
 
-The summary below is deliberately short; **`SPECS.md` carries the complete inventory**, field by
-field and endpoint by endpoint.
+The summary below is deliberately short; **`openspec/specs/specification-status/spec.md` carries the complete
+inventory**, field by field and endpoint by endpoint.
 
 | Area | Status |
 |---|---|
@@ -45,11 +45,12 @@ Every reconstructed field, endpoint, and code in the source carries a `@Provisio
 (source-retention, for readers) or an explicit "PROVISIONAL" note in its javadoc. See `CLAUDE.md` for
 the rule governing when something may be promoted from provisional to verified.
 
-**If you are on the team and get to read the official spec, correct the inventory in `SPECS.md`,
-citing the specific section.** That is worth more than anything else in the backlog.
+**If you are on the team and get to read the official spec, correct the inventory in
+`openspec/specs/specification-status/spec.md`, citing the specific section.** That is worth more than anything
+else in the backlog.
 
 The mandate timeline — October 2026 voluntary, April 2027 mandatory — is a planning assumption, not
-a confirmed legal deadline. See `SPECS.md` § FUTURE.
+a confirmed legal deadline. See `openspec/changes/verification-pass-against-official-spec/`.
 
 ## Architecture
 

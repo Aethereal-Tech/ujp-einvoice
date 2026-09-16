@@ -14,8 +14,9 @@ import java.util.List;
  *
  * <p>This type is serialization-agnostic — it knows nothing about JSON, JWS, or the UJP gateway.
  * That separation is deliberate: see {@code net.aetherealtech.ujpeinvoice.serialization.Serializer}
- * for turning an {@code Invoice} into wire bytes, and {@code SPECS.md} for what is and is not
- * verified about that wire shape.
+ * for turning an {@code Invoice} into wire bytes, and
+ * {@code openspec/specs/specification-status/spec.md} for what is and is not verified about that
+ * wire shape.
  */
 public record Invoice(String invoiceNumber, LocalDate issueDate, LocalDate dueDate, Currency currency,
                        Party seller, Party buyer, List<LineItem> lineItems, Totals totals,

@@ -11,7 +11,7 @@ import java.lang.annotation.Target;
  * is publicly documented, not from having read efakturawiki.ujp.gov.mk's own
  * "API Спецификација" (unreachable outside North Macedonian networks as of this writing).
  *
- * <p>See {@code SPECS.md}'s "Specification inventory" section for the full list of what carries this
+ * <p>See {@code openspec/specs/specification-status/spec.md} for the full list of what carries this
  * marker and why. Per {@code CLAUDE.md}, nothing marked {@code @ProvisionalSpec} may be
  * promoted to verified without citing the specific section of the official spec that confirms it.
  *
