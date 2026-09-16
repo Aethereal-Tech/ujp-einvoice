@@ -50,7 +50,7 @@ the rule governing when something may be promoted from provisional to verified.
 else in the backlog.
 
 The mandate timeline — October 2026 voluntary, April 2027 mandatory — is a planning assumption, not
-a confirmed legal deadline. See `openspec/changes/verification-pass-against-official-spec/`.
+a confirmed legal deadline. See `openspec/changes/wire-layer-correction/`.
 
 ## Architecture
 
