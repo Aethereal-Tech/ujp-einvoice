@@ -155,15 +155,11 @@ that signs correctly but was never registered there is the likely cause of error
 
 ## Consuming this library (GitHub Packages)
 
-**This is a private repository, and the package is private with it.** A GitHub token is required on
-every request — there is no anonymous read, of this or of any GitHub Packages artifact — and the
-token must additionally carry access to the Aethereal-Tech organization's private repositories.
-Either kind works:
-
-- a **classic** personal access token with `read:packages` **and** `repo` — GitHub Packages resolves
-  private-package access through repository access, so `read:packages` on its own is refused; or
-- a **fine-grained** personal access token granted this repository, with *Contents: Read* and
-  *Packages: Read*.
+**A GitHub token is required on every request**, even though this package is public — there is no
+anonymous read, of this or of any GitHub Packages artifact. That is the registry's rule rather than
+a choice made here. Being public is what keeps the bar low: any authenticated token carrying
+`read:packages` resolves it, and inside a GitHub Actions workflow the run's own `GITHUB_TOKEN` does.
+Neither `repo` scope nor membership of the Aethereal-Tech organization is needed.
 
 Add the repository:
 
