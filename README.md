@@ -4,6 +4,18 @@ A Java library for the North Macedonian UJP e-Faktura e-invoicing gateway: a ser
 invoice domain model, RS256 JWS signing, and an HTTP client — built with zero runtime dependencies,
 targeting JDK 25+.
 
+> [!WARNING]
+> **Work in progress. Do not use this to file.**
+>
+> The wire format in every published release is wrong. The official „API Спецификација" was obtained on
+> 2026-09-13 and compared against 0.2.0 field by field: the payload shape, the request envelope and the
+> mandatory request headers are all wrong, and the gateway would reject a submission at its first validation
+> step. Six of roughly thirty-five wire names survive. A corrected release is planned; it will be `1.0.0` or a
+> parallel package, and it will break every consumer pinned to 0.2.0.
+>
+> Read `openspec/specs/specification-status/spec.md` before depending on anything here. The comparison that
+> found this is beside it, as `comparison-2026-09-13.md`.
+
 **This project is not affiliated with, endorsed by, or reviewed by УЈП (the Public Revenue Office of
 the Republic of North Macedonia).** It is an independent, best-effort client built from public
 research. Read the section below before using it against anything but a sandbox.
@@ -14,40 +26,47 @@ inventory, and the signing entry points; `openspec/changes/` holds the planned w
 
 ## Specification status
 
-This is the most important section in this README. The authoritative source for the UJP e-Faktura
-wire format — efakturawiki.ujp.gov.mk's „API Спецификација" — is **unreachable outside North
-Macedonian networks, and nobody who built this library has read it.** Everything was reconstructed
-from public desk research and hands-on accounts from Macedonian integrators (forum posts, blog
-write-ups, and support-channel screenshots), as of 2026-08-28. Treat all of it as a starting point
-to validate against a real sandbox account, not as a confirmed contract.
+This is the most important section in this README, and its answer changed on 2026-09-13.
 
-The summary below is deliberately short; **`openspec/specs/specification-status/spec.md` carries the complete
-inventory**, field by field and endpoint by endpoint.
+**The official specification has been read.** Until then it was believed unreachable outside North Macedonian
+networks, and everything here was reconstructed from public desk research and hands-on accounts from Macedonian
+integrators. It was never a geography problem: the documentation host serves its certificate without the
+intermediate, so a client that will not complete the chain itself fails while one that does gets the page.
 
-| Area | Status |
+The comparison against 0.2.0 is recorded in full at `openspec/specs/specification-status/comparison-2026-09-13.md`,
+and `openspec/specs/specification-status/spec.md` carries the inventory requirement by requirement. The short
+version:
+
+| Area | Verdict |
 |---|---|
-| Wire format is a proprietary UJP JSON schema, signed as compact JWS (RS256), **not** UBL 2.1 / XAdES | Reconstructed, moderate confidence |
-| Submission returns an EUID and a QR verification link | Reconstructed, moderate confidence |
-| Endpoint family `/JSONReceiver/sales-invoices/...` on `efakturatest.ujp.gov.mk` | Reconstructed, moderate confidence |
-| Status-polling path, and the production base URL | Reconstructed, very low confidence — one guessed by analogy, the other inferred from the sandbox hostname |
-| Exact JSON field names (`invoiceNumber`, `seller`, `lineItems`, ...) | Reconstructed, low confidence — this library's own naming |
-| Document type field and its note codes (`documentType`, `CREDIT_NOTE`, `DEBIT_NOTE`) | Reconstructed, low confidence — this library's own naming. Nothing describes how UJP marks a note; an ordinary invoice writes no type field at all |
-| Corrected-invoice reference (`correctedInvoice`, carrying `number` and `issueDate`) | Reconstructed, low confidence — this library's own naming |
-| Line-item unit of measure (`unit`, free text) | Reconstructed, low confidence — this library's own naming. Nothing says UJP expects a unit at all, let alone a code from a list |
-| Omitting an absent field entirely — a natural-person buyer's missing tax id, street, postal code or city — rather than writing `""` or `null` | Reconstructed, low confidence — this library's own choice; the gateway's tolerance for either is unverified |
-| Error codes E1012, E5004, E10001–E10003 exist | Reconstructed, moderate confidence |
-| Meaning of E5004 and E10001–E10003 specifically | **Unknown** |
-| Cert-based auth needs a KIBS- or Telekom-issued qualified certificate, pre-registered at `eujptest.ujp.gov.mk/ureg` | Reconstructed, moderate confidence |
-| MK VAT rates: 18% standard, 10% and 5% reduced, 0% zero-rated, plus an exempt category | **Verified** — public tax law, independent of the wire format |
+| A proprietary JSON schema signed as compact JWS, **not** UBL 2.1 / XAdES | **Confirmed** against the official documents |
+| A submission answers with an EUID and a QR verification link | **Confirmed** |
+| The sandbox host, and a qualified certificate registered in the УЈП portal | **Confirmed** in substance; the issuing authorities this library names are confirmed by nothing |
+| The shape of the signed payload | **Wrong** — it nests under `document` with eight named blocks; 0.2.0 emits a flat invoice and no request timestamp at all |
+| The request body | **Wrong** — the gateway takes a JSON envelope carrying the JWS; 0.2.0 posts the raw compact serialization |
+| Request headers | **Wrong** — four are mandatory and 0.2.0 sends none of them |
+| The send path | **Wrong** — it carries an `/api/v1` segment this library omits |
+| Exact JSON field names | **Wrong** — six of roughly thirty-five survive |
+| VAT category wire values | **Wrong** — they are `DDV-A` (18%), `DDV-V` (10%), `DDV-B` (5%) and `DDV-G` (0%), not the rate itself, and the letters are not alphabetical by rate. Exemption is a family of tax indicators, not one category |
+| Document type, and how a credit or debit note is marked | **Answered** — a mandatory code on every document (`100`, `110`, `120`); cancellation is a separate axis; amounts stay positive |
+| The status-polling endpoint | **Answered** — a signed POST, not a GET by id |
+| The meanings of the certificate and company-validation error codes | **Answered** from the published catalogue. Codes are namespaced per API, so the same string means different things in different interfaces and this library's flat constant set is itself a modelling error |
+| The production base URL | **Still unverified** — every published document names only the sandbox |
+| What a natural-person buyer omits | **Still unverified** — every worked example bills a company, and the buyer's tax number and address are marked mandatory |
+| Rounding, and writing an explicit null versus omitting a field | **Still unverified** — not published either way |
+| MK VAT rates: 18% standard, 10% and 5% reduced, 0% zero-rated | **Verified** — public tax law, independent of the wire format |
 | ЕДБ (unique tax number) as the party identifier | **Verified concept, format deliberately not enforced** |
 
-Every reconstructed field, endpoint, and code in the source carries a `@ProvisionalSpec` annotation
-(source-retention, for readers) or an explicit "PROVISIONAL" note in its javadoc. See `CLAUDE.md` for
-the rule governing when something may be promoted from provisional to verified.
+One thing has not been read and should be, before any field name in a corrected release is called verified: the
+JSON Schema the gateway actually validates against. It sits behind the Swagger interface on the API host rather
+than the documentation host. The worked examples are illustrations of it, not the thing itself, and promoting names
+on the strength of examples is how this library came to be wrong the first time.
 
-**If you are on the team and get to read the official spec, correct the inventory in
-`openspec/specs/specification-status/spec.md`, citing the specific section.** That is worth more than anything
-else in the backlog.
+Every reconstructed field, endpoint and code in the source carries a `@ProvisionalSpec` annotation
+(source-retention, for readers) or an explicit "PROVISIONAL" note in its javadoc. Nothing is promoted to verified
+without citing the specific section of an obtained document that confirms it, and a sandbox that behaves as
+expected is evidence rather than confirmation — the reconstructions were self-consistent and still wrong. See
+`CLAUDE.md` for the rule.
 
 The mandate timeline — October 2026 voluntary, April 2027 mandatory — is a planning assumption, not
 a confirmed legal deadline. See `openspec/changes/wire-layer-correction/`.
@@ -195,12 +214,11 @@ project's own `pom.xml`):
 
 ### From a consuming repository's Actions
 
-A workflow's built-in `GITHUB_TOKEN` reaches only its own repository's packages, and nothing widens
-that: Maven packages on GitHub always inherit the permissions of the repository that published them,
-with no per-package Actions access grant to extend read access to a consuming repository. For a
-consuming repository, the only credential that works is a token of the kind described above, stored
-as a secret and passed to Maven instead (Aethereal-Tech repositories use the organization secret
-`PACKAGES_READ_TOKEN`, wired into `actions/setup-java` as `server-password: PACKAGES_READ_TOKEN`).
+Maven packages on GitHub inherit the permissions of the repository that published them, so a public
+repository means a public package. A consuming workflow's own built-in `GITHUB_TOKEN` resolves it, with
+no secret to configure, no `repo` scope and no membership of the Aethereal-Tech organization. A stored
+personal access token carrying `read:packages` works too, and is what a consumer needs when it resolves
+packages from a repository that is still private.
 
 Every Maven step that resolves this dependency needs those credentials, in CI as much as locally: a
 job that runs `mvn` without them fails at dependency resolution, not at some later step.
