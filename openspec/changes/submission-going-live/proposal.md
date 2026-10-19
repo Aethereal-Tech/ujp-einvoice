@@ -10,7 +10,8 @@ shape is corrected and verified, and until the calling organization has a certif
   the gateway. The specification is in hand now (see
   `openspec/specs/specification-status/comparison-2026-09-13.md`), but the corrected wire layer it describes is not
   built yet — reading the spec is not the same condition as this one.
-- The calling organization must additionally hold a KIBS- or Telekom-issued qualified certificate, and that
+- The calling organization must additionally hold a qualified certificate from any qualified trust-service
+  provider in North Macedonia (D6 and the FAQ, as of 2026-10-19; software or USB token), and that
   certificate must be registered at `eujptest.ujp.gov.mk/ureg`.
 - Until all three conditions are in hand, consumers generate documents and do not submit them.
 
@@ -33,7 +34,7 @@ until the prerequisites land.
 
 **Tag.** Untagged — not built yet.
 
-**Why it waits.** Waits on `wire-layer-correction` landing and being verified, **plus** a KIBS- or Telekom-issued
+**Why it waits.** Waits on `wire-layer-correction` landing and being verified, **plus** a
 qualified certificate and UJP portal registration of that certificate at `eujptest.ujp.gov.mk/ureg`.
 
 **Reopens when** all three conditions above are met.
