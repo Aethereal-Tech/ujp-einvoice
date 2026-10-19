@@ -1,7 +1,7 @@
 ## 0. Owner decisions and inputs (blocking where marked)
 
-- [ ] 0.1 Decide the version: 1.0.0 off `next/1.0` or a parallel package (design, decision 1). Blocks 1.1.
-- [ ] 0.2 Decide scope for kinds 130, 170 and 310 (design, open questions 2–4). Blocks 6.3 for those kinds only.
+- [x] 0.1 Decide the version: 1.0.0 off `next/1.0` (owner, 2026-10-19).
+- [x] 0.2 Decide scope: 130 and 310 in 1.0, 170 out (owner, 2026-10-19).
 - [ ] 0.3 Approve the CLAUDE.md money-rule wording (design, decision 3). Blocks 4.1.
 - [ ] 0.4 Fetch `swagger.json` from the Swagger UI on the API host (a person; nothing in this project calls that host).
   Blocks 9.
@@ -44,19 +44,18 @@
   with attributes and per-line discount, document totals including `docAmountIncrease`/`docAmountDecrease` and the
   final-amount formula, and VAT totals by group and by indicator.
 - [ ] 5.3 `VatGroup`, and `TaxIndicator` with the dated `TaxIndicators` snapshot (decision 4).
-- [ ] 5.4 `DocumentKind` table for 100, 110 and 120 from the type pages, with mandatory fields refused by name.
+- [ ] 5.4 `DocumentKind` table for 100, 110, 120, 130 and 310 from the type pages, with mandatory fields refused by name.
 - [ ] 5.5 `Storno` and `Correction` as the `docStorno` axis (decision 5). Negative amounts are allowed only on a
   storno.
-- [ ] 5.6 Revise `product-boundaries`: the natural-person address cut is re-opened for kind 170 only, and the
-  credit-note sign rule stands.
+- [ ] 5.6 `product-boundaries`: the natural-person address cut stands, since 170 is not in 1.0; record that 170
+  re-opens it. The credit-note sign rule stands.
 
 ## 6. Serializer
 
 - [ ] 6.1 The envelope, and `document` with `voidReason`/`correctionReason` as siblings.
 - [ ] 6.2 `null` and `[]` for absent fields. Emit no undocumented member. `docAlt` and the currency block follow
   decision 6.
-- [ ] 6.3 Goldens from the 08.10 examples: 100, 100 storno, 100 correction, 110 and 120, plus 130, 170 and 310 if 0.2
-  says so. Recompute every total from the model, and keep `scripts/verify-jws.py` as the independent check.
+- [ ] 6.3 Goldens from the 08.10 examples: 100, 100 storno, 100 correction, 110 and 120, 130 and 310. Recompute every total from the model, and keep `scripts/verify-jws.py` as the independent check.
 
 ## 7. Signing
 

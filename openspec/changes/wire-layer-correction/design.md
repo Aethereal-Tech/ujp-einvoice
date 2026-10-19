@@ -45,7 +45,7 @@ written, here and in every consumer.
 
 ## Decisions
 
-### 1. Version: 1.0.0 off an integration branch, with one breaking merge (owner to confirm)
+### 1. Version: 1.0.0 off an integration branch, with one breaking merge (owner, 2026-10-19)
 
 `publish.yml` mints a release on every push to `master`, bumped by the commit types since the last tag. Landing this
 work piecemeal on `master` would publish a string of half-corrected versions, and the first of them would be the
@@ -223,16 +223,19 @@ now give everything needed to build. It gates **publishing**.
 
 ## Open Questions
 
-These are for the owner unless marked otherwise.
+Answered by the owner on 2026-10-19:
 
-1. **Version.** Is it 1.0.0 off `next/1.0` (recommended), or a parallel package?
-2. **Kind 310 «Готовински промет».** Does Invicta's daily cash invoice map to 310? Or is it out of scope, because the
-   draft law excludes sales covered by a fiscal receipt?
-3. **Kind 170, invoice to a natural person.** Is it in scope for 1.0? It needs a decision on its "????" code, which
-   would mean asking UJP.
-4. **Kind 130, advance invoice.** Invicta's `advance-and-partial-invoices` change is planned and unbuilt. Should 130
-   be in 1.0, or follow it?
-5. **The CLAUDE.md money rule's new wording** (decision 3).
-6. **Who fetches `swagger.json`, and when.** This is a person's task, on the API host.
-7. **For UJP, should the owner choose to ask:** the `ЗШ*` asterisk, the 170 code, `docAlt`'s type, the error body
-   shape and the production base URL.
+- **Version.** 1.0.0 off `next/1.0` (decision 1).
+- **Scope.** In 1.0, beyond 100, storno, correction, 110 and 120: **130** (advance invoice) and **310** (cash
+  turnover). **170** (invoice to a natural person) is not in 1.0.
+- 310 is in scope although the draft law excludes sales covered by a fiscal receipt. Whether a given Invicta cash
+  invoice is filed as 310 is the consumer's decision, not the library's.
+
+Still open:
+
+1. The CLAUDE.md money rule's new wording (decision 3). This needs the owner's approval.
+2. Who fetches `swagger.json`, and when. This is a person's task, on the API host.
+3. For UJP, should the owner choose to ask: the `ЗШ*` asterisk, `docAlt`'s type, the error body shape and the
+   production base URL.
+4. **Order of work.** The owner put Invicta's advance and partial invoices first (2026-10-19). The two meet at kind
+   130: what Invicta's advance invoice states should be shaped so it maps onto 130 without a second redesign.
