@@ -10,8 +10,8 @@
 
 ## 1. Branch and CI
 
-- [ ] 1.1 Create `next/1.0` from `master`. Extend `pr-check.yml` `branches:` to `[master, 'next/**']` with a `ci:`
-  commit, which mints no version.
+- [x] 1.1 Extend `pr-check.yml` `branches:` to `[master, 'next/**']` (a `ci:` commit, which mints no version). Create
+  `next/1.0` from `master` once this plan has merged.
 - [ ] 1.2 Record in `testing-and-gates` that `next/1.0` publishes nothing and merges once, with `BREAKING CHANGE` in
   the merge body.
 
@@ -44,7 +44,8 @@
   with attributes and per-line discount, document totals including `docAmountIncrease`/`docAmountDecrease` and the
   final-amount formula, and VAT totals by group and by indicator.
 - [ ] 5.3 `VatGroup`, and `TaxIndicator` with the dated `TaxIndicators` snapshot (decision 4).
-- [ ] 5.4 `DocumentKind` table for 100, 110, 120, 130 and 310 from the type pages, with mandatory fields refused by name.
+- [ ] 5.4 `DocumentKind` table for 100, 110, 120, 130 and 310 from the type pages, with mandatory fields refused
+  by name.
 - [ ] 5.5 `Storno` and `Correction` as the `docStorno` axis (decision 5). Negative amounts are allowed only on a
   storno.
 - [ ] 5.6 `product-boundaries`: the natural-person address cut stands, since 170 is not in 1.0; record that 170
@@ -55,7 +56,8 @@
 - [ ] 6.1 The envelope, and `document` with `voidReason`/`correctionReason` as siblings.
 - [ ] 6.2 `null` and `[]` for absent fields. Emit no undocumented member. `docAlt` and the currency block follow
   decision 6.
-- [ ] 6.3 Goldens from the 08.10 examples: 100, 100 storno, 100 correction, 110 and 120, 130 and 310. Recompute every total from the model, and keep `scripts/verify-jws.py` as the independent check.
+- [ ] 6.3 Goldens from the 08.10 examples: 100, 100 storno, 100 correction, 110, 120, 130 and 310. Recompute every
+  total from the model, and keep `scripts/verify-jws.py` as the independent check.
 
 ## 7. Signing
 

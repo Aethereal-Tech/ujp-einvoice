@@ -237,5 +237,5 @@ Still open:
 2. Who fetches `swagger.json`, and when. This is a person's task, on the API host.
 3. For UJP, should the owner choose to ask: the `ЗШ*` asterisk, `docAlt`'s type, the error body shape and the
    production base URL.
-4. **Order of work.** The owner put Invicta's advance and partial invoices first (2026-10-19). The two meet at kind
-   130: what Invicta's advance invoice states should be shaped so it maps onto 130 without a second redesign.
+4. **Order of work.** The library comes first: Invicta's advance and partial invoices were parked again
+   (owner, 2026-10-20). Kind 130 stays in 1.0, so Invicta's advance invoice will later be shaped to map onto it.
