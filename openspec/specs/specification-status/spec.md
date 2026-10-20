@@ -120,12 +120,38 @@ second.
 
 ### Requirement: error codes are namespaced per API, so a flat constant set is a modelling error
 Error codes SHALL be modelled per API — the eInvoice API, the JSON Receiver and the Web App each have their own —
-and SHALL NOT be held as one flat set of constants.
+and SHALL NOT be held as one flat set of constants. The catalogue in `UjpErrorCodes` is D5 as it stood on
+2026-10-05 and is **verified**, cited to D5 (`https://efakturawiki.ujp.gov.mk/error-codes`, page `updated-at`
+2026-10-05T21:17Z, retrieved 2026-10-19): 55 codes under eInvoiceApi, 104 under JSON Receiver and 32 under Web App,
+every entry on the page, each meaning as the page states it, untranslated.
 
-The same string means different things in different interfaces: one code is "certificate already exists" in the
-eInvoice API and "invalid calculated totals" in the JSON Receiver. A consumer that matches on the string alone will
-eventually act on the wrong meaning, and the library would be the reason. This is a fault in how the library models
-codes, not a quirk of the gateway to be documented and tolerated.
+The same string means different things in different interfaces: E1020 is "This certificate for this company already
+exists!" in the eInvoice API and "Invalid calculated totals" in the JSON Receiver, E4023 is "Notification with ID was
+not found" in one and "Invalid X-EDB" in the other, and E1019 differs between all three. A consumer that matches on
+the string alone will eventually act on the wrong meaning, and the library would be the reason. This is a fault in
+how the library models codes, not a quirk of the gateway to be documented and tolerated. `ErrorNamespace` names the
+three catalogues and `UjpErrorCode(namespace, code, meaning)` carries the pair as its identity.
+
+The catalogue is a snapshot, and a code it does not list resolves to empty, never to a guess. The OpenAPI
+description's `ErrorStatusBean` enum (72 codes, `openapi-2026-10-20.md`) and D5's eInvoiceApi section (55) overlap
+fully in one direction only: every D5 eInvoiceApi code is in the enum, and 17 enum codes — E1003, E1005, E1007,
+E1008, E4006, E4017, E4018, E4019, E4020, E4021, E4022, E4024, E4027, E5009, E5010, E5012 and E5013 — are listed by
+D5 under no eInvoiceApi entry (E4018–E4022, E4024 and E5012 appear in D5 under the JSON Receiver only). They are
+left out of the catalogue rather than recorded with an invented or null meaning, so that every entry is a quotation.
+The error body of `einvoice_api` is `ErrorStatus(errorCode, errorMessage, errorPropertyMap)`, cited to
+`openapi-2026-10-20.md`; its `errorCode` stays a string so that a code outside the catalogue survives. The JSON
+Receiver's own error body is described by no obtained document.
+
+`UjpException` keeps the HTTP status, the code, the raw response body and the namespace (`null` when unknown), and
+resolves the pair with `known()`. A code without a namespace is not resolved: the string alone does not say which
+meaning applies.
+
+The meanings that were open are settled by D5: E1012 is "Certificate not found" in all three catalogues, broader than
+the "not pre-registered" gloss the library carried (the registration case is E1013, "User is not authorized to sign
+documents for this company"); E5004 is "Certificate validation failed" in all three; E10001 is "Missing TIN during
+company validation process", E10002 "An incorrect company name was provided" and E10003 "An incorrect VAT number was
+provided for the company", all JSON Receiver. E1033–E1035, E500719/E500720 (JSON Receiver) and E5014–E5019
+(eInvoiceApi) are in. The `@ProvisionalSpec` markers on the five flat constants are gone with the constants.
 
 #### Scenario: The same code arrives from two different interfaces
 - **WHEN** one code string is returned by the eInvoice API and by the JSON Receiver
@@ -135,6 +161,10 @@ codes, not a quirk of the gateway to be documented and tolerated.
 - **WHEN** the meaning of a code such as the certificate-validation or company-validation failures is needed
 - **THEN** it comes from the published error catalogue, which settles them, rather than from an integrator's
   account
+
+#### Scenario: A code the catalogue does not list arrives
+- **WHEN** the gateway returns a code D5's 2026-10-05 page does not list, or the namespace is not known
+- **THEN** `UjpException.known()` is empty, and the code and the raw body are kept as received
 
 ### Requirement: status is polled with a signed POST, not fetched by id
 Current status SHALL be read with `POST /api/v1/documents/sales-invoice/current-status` on the eInvoice API,

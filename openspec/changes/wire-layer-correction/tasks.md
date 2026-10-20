@@ -29,10 +29,10 @@
 
 ## 3. Error catalogue (self-contained, first code to land)
 
-- [ ] 3.1 Replace the five flat constants with three namespaced catalogues (JSON Receiver, eInvoiceApi, Web App) from
+- [x] 3.1 Replace the five flat constants with three namespaced catalogues (JSON Receiver, eInvoiceApi, Web App) from
   D5 as of 2026-10-05, including E1033–E1035, E500719/E500720 and E5014–E5019.
-- [ ] 3.2 Keep an unknown code and the raw response body, and never map them to a guess.
-- [ ] 3.3 Correct E1012 ("certificate not found"), and cite E5004 and E10001–E10003.
+- [x] 3.2 Keep an unknown code and the raw response body, and never map them to a guess.
+- [x] 3.3 Correct E1012 ("certificate not found"), and cite E5004 and E10001–E10003.
 
 ## 4. Money
 
