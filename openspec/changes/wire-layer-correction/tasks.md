@@ -17,14 +17,14 @@
 
 - [x] 1.1 Extend `pr-check.yml` `branches:` to `[master, 'next/**']` (a `ci:` commit, which mints no version). Create
   `next/1.0` from `master` once this plan has merged.
-- [ ] 1.2 Record in `testing-and-gates` that `next/1.0` publishes nothing and merges once, with `BREAKING CHANGE` in
-  the merge body.
+- [x] 1.2 Record in `testing-and-gates` that `next/1.0` publishes nothing and merges once, with `BREAKING CHANGE` in
+  the merge body, and that `pr-check` runs for pull requests into `next/**`.
 
 ## 2. Sources pinned
 
-- [ ] 2.1 Fold `comparison-2026-10-19.md` into `specification-status/spec.md`: D3' replaces D3, plus the type pages,
+- [x] 2.1 Fold `comparison-2026-10-19.md` into `specification-status/spec.md`: D3' replaces D3, plus the type pages,
   `/json-struktura`, `/status`, the FAQ and the changelog as sources, each with its retrieval date.
-- [ ] 2.2 Record the `/известувања` changelog as the only history the wiki exposes, and the TLS leaf expiry of
+- [x] 2.2 Record the `/известувања` changelog as the only history the wiki exposes, and the TLS leaf expiry of
   2026-12-13.
 
 ## 3. Error catalogue (self-contained, first code to land)

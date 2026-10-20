@@ -38,22 +38,75 @@ The official documents SHALL be treated as obtained, and any claim about the wir
 
 Retrieved 2026-09-13 from `efakturawiki.ujp.gov.mk`: the **API Спецификација** page at `/тест_апи`, which is the
 authoritative page; **`api-documentation-public8.pdf`**, revision "Public8", the same material in downloadable form
-and a subset of the page; **`primer_za_json_01.09.pdf`** dated 01.09.2026, thirty-odd worked JSON documents, one per
-document type, which is the de facto field-level specification; **`sifrarnici_24042026.pdf`**, the code lists and
+and a subset of the page; **`primer_za_json_08.10.pdf`** dated 08.10.2026 (D3'), thirty-odd worked JSON documents, one per
+document type, which is the de facto field-level specification and replaces the 01.09.2026 set (D3); **`sifrarnici_24042026.pdf`**, the code lists and
 the mandatory markers, but only for fields that draw on a code list; and the **error catalogue** at `/error-codes`,
-which is not linked from the specification page and was found by probing. An older example set from 2026-04-29 is
-superseded and named only so a reader does not mistake it for current.
+which is not linked from the specification page and was found by probing. The older example sets (01.09.2026 and
+2026-04-29) are superseded and named only so a reader does not mistake them for current. The sources added on
+2026-10-19 are in the next requirement.
 
-The code lists tag each field `З`, `ЗШ`, `ЗП`, `О`, `ОШ` or `ОП` and **carry no legend**. That the `З` forms mean
-mandatory and the `О` forms optional is inferred from usage, not stated, and is not to be treated as confirmed.
+The code lists tag each field `З`, `ЗШ`, `ЗП`, `О`, `ОШ` or `ОП`. They carry no legend, but UJP's `/json-struktura`
+publishes one (retrieved 2026-10-19): `З` mandatory, `О` optional, `Ш` code (шифра), `П` name (назив). The older
+guide `upatstvo_efaktura_opsta_24042026.pdf` carries it too, so it predates the first comparison, which had not read
+that guide. What stays unexplained is the asterisk in `ЗШ*` (`buyerTin` on 100, `buyerForeignTin` on 510).
 
 #### Scenario: A wire-format claim is made without a citation
 - **WHEN** a field name, endpoint, code or behaviour is called verified
 - **THEN** it cites the specific document and section that confirms it, from the inventory above
 
-#### Scenario: A mandatory marker is read off the code lists
-- **WHEN** a field's obligation is taken from the code lists' `З` / `О` markers
-- **THEN** it is recorded as inferred from usage, because the document publishes no legend
+#### Scenario: A mandatory marker is read off a type page or the code lists
+- **WHEN** a field's obligation is taken from a `З` / `О` marker
+- **THEN** it cites the `/json-struktura` legend, which publishes the meaning
+- **AND** a `ЗШ*` marker is recorded as conditional on something UJP does not state, never as plain mandatory
+
+### Requirement: every source is pinned with the date it was retrieved, and the changelog is the only history
+Every document this capability cites SHALL be named with its state and the date it was retrieved, and a source that is
+replaced SHALL be recorded as replaced rather than deleted from the record. The detailed field-by-field record stays
+in `comparison-2026-09-13.md` and `comparison-2026-10-19.md`; this is the index into them.
+
+Retrieved 2026-10-19 with `curl` from `efakturawiki.ujp.gov.mk` unless a row says otherwise (`updated-at` is the
+page's own stamp, `Last-Modified` the PDF's):
+
+| Source | State when retrieved | Role |
+|---|---|---|
+| D1 „API Спецификација", `/тест_апи` | `updated-at` 2026-10-16T14:36:59Z | Endpoints, headers, validations, formulas, response shapes; links D3' |
+| D2 `downloads/api-documentation-public8.pdf` | 35 pp, `Last-Modified` 2026-08-20 | A subset of D1: lacks `/purchase-tax-indicators*`, calls `/reject-reasons` what D1 calls `/reject-reason` |
+| **D3' `downloads/primer_za_json_08.10.pdf`** | 71 pp, `Last-Modified` 2026-10-08, sha256 `1011fc23...` | **Replaces D3.** The only set D1 links. One example differs from D3: the exempt-from-tax one now uses `DDV-8-2` and carries members no table lists |
+| D3 `primer_za_json_01.09.pdf` | 71 pp, `Last-Modified` 2026-09-07 | Superseded; still served |
+| `primer_za_json_3.pdf`, `primer_za_json_2.pdf` | 23 pp (created 2026-07-29), 16 pp (created 2026-04-29) | Interim and older sets; superseded |
+| D4 `sifrarnici_24042026.pdf` and `/шифрарници` | PDF 8 pp, created 2026-04-28; the page `updated-at` 2026-10-16T07:52Z | Code lists and markers, for code-list fields only |
+| D5 `/error-codes` | `updated-at` 2026-10-05T21:17Z | The error catalogue (`UjpErrorCodes`) |
+| D6 `/ДоделувањепристапвоеУЈП` | `updated-at` 2026-10-14; `pristap_eujp.pdf` 4 pp, 2026-06-13 | Privileges and certificate registration |
+| The 23 per-type pages, `/100-faktura` to `/999-povrzani-dokumenti` | most `updated-at` 2026-10-14; `/100-faktura` 2026-10-16 | **A source of its own:** the field table of each kind (code `UJPnn-nn`, name, type, length, `З`/`О`), which the model and the serializer cite |
+| `/json-struktura` | read 2026-10-19 | The legend, and the rounding rules (`ROUND_HALF_UP`, four decimals on a line, two on the totals) |
+| `/status` | `updated-at` 2026-10-15 | The ten status codes (`SubmissionStatus` constants) |
+| `/danocni-indikatori` | `updated-at` 2026-08-27 | The tax-indicator list, about 104 codes (`TaxIndicators`) |
+| FAQ `/ЧПП` | `updated-at` 2026-06-09 | The JWS header `{"alg":"RS256","typ":"JWT"}` |
+| Changelog `/известувања` | entries 02.01.2026 to 16.10.2026 | Dated changes; the only history the wiki exposes (next requirement) |
+| `einvoice_api` API description | fetched 2026-10-20 by the owner from the API host, `openapi-2026-10-20.md` | The `einvoice_api` shapes; not the JSON Receiver |
+
+The 08.10 examples, not the 01.09 set, are what the goldens' numbers come from; D3 stays in the record only because it
+is still served.
+
+#### Scenario: A reader asks which example set is current
+- **WHEN** an example is cited for a field's shape
+- **THEN** it is cited to D3' (08.10.2026), and the 01.09.2026 set is named only as superseded
+
+### Requirement: the changelog is the only history the wiki exposes
+The changelog page `/известувања` ("Промени во системот еФактура") SHALL be treated as the only history of the
+documentation available, and a re-run of the comparison SHALL read it.
+
+The host is Wiki.js. Its page history (`/h/...`), page source (`/s/...`) and `?action=history` all answer the login
+shell of about 2 KB, so per-page history is not public; `Special:RecentChanges` and `/sitemap.xml` are 404 and
+`robots.txt` is empty. What a reader has is the changelog's dated entries, each page's `updated-at` and each PDF's
+`Last-Modified`. That cannot tell "changed since the last comparison" from "missed by it": the legend, the FAQ's
+algorithm and the rounding rule were of the second kind. A page edited without a changelog entry is invisible except
+through its `updated-at`.
+
+#### Scenario: A page's content is compared against an earlier pass
+- **WHEN** a page differs from the earlier comparison
+- **THEN** the changelog's entries and the page's `updated-at` date the change where they can, and the record says so
+  where they cannot
 
 ### Requirement: the correction is a breaking release, never a 0.3.0
 The corrected wire layer SHALL ship as `1.0.0` or as a parallel package beside 0.2.0, never as a `0.3.0`.
@@ -337,11 +390,15 @@ still have no schema behind them.
 ### Requirement: the documentation host serves its certificate without the intermediate
 A reader SHALL NOT conclude the documentation host is unreachable because a fetch failed. It serves a valid leaf
 certificate and omits the intermediate, so a client that will not fetch the missing link itself fails while others
-succeed.
+succeed. The page is fetched with `curl` against the system trust store, never with `-k`.
 
 This cost the project months: the site was assumed to be reachable only from inside North Macedonia, and it was
-never a geography problem at all. The leaf in place at the time of the comparison expires on 2026-09-23; if it is
-renewed without fixing the chain, the same symptom returns and the same wrong conclusion is available to draw.
+never a geography problem at all. The state as of 2026-10-19: the leaf (`CN=efakturawiki.ujp.gov.mk`, issued by Let's
+Encrypt `YR1`) was **renewed on 2026-09-14** and **expires on 2026-12-13**, and the chain is **still leaf-only**
+(`openssl s_client -showcerts` prints one certificate and `verify error:num=21`); `curl` answers `HTTP 200` with
+`ssl_verify=0`. The earlier leaf's expiry of 2026-09-23 passed without the chain being fixed, so a further renewal
+cannot be assumed to fix it, and the same symptom, and the same wrong conclusion, remain available to draw until it
+is fixed.
 
 #### Scenario: A fetch of the documentation host fails to verify
 - **WHEN** a client fails to verify the documentation host's certificate chain
