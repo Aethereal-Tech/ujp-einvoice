@@ -37,7 +37,7 @@ class LineTest {
 
     @Test
     void aNonStandardIndicatorCarriesNoVatOnTheLine() {
-        TaxIndicator exempt = TaxIndicators.SNAPSHOT_2026_10_16.get("DDV-9-1");
+        TaxIndicator exempt = TaxIndicators.SNAPSHOT_2026_08_27.get("DDV-9-1");
         Line line = line().tax(VatGroup.DDV_G, exempt).build();
 
         assertThat(line.unitVat()).isEqualByComparingTo("0");
@@ -47,7 +47,7 @@ class LineTest {
 
     @Test
     void aTransferredLineCarriesNoVatButKnowsWhatTheRateWouldAdd() {
-        TaxIndicator transferred = TaxIndicators.SNAPSHOT_2026_10_16.get("DDV-11-A-G");
+        TaxIndicator transferred = TaxIndicators.SNAPSHOT_2026_08_27.get("DDV-11-A-G");
         Line line = line().tax(VatGroup.DDV_A, transferred).build();
 
         assertThat(line.totalVat()).isEqualByComparingTo("0");
@@ -108,7 +108,7 @@ class LineTest {
 
     @Test
     void anIndicatorOfSeveralGroupsFollowsTheLinesGroup() {
-        TaxIndicator several = TaxIndicators.SNAPSHOT_2026_10_16.get("DDV-14-4");
+        TaxIndicator several = TaxIndicators.SNAPSHOT_2026_08_27.get("DDV-14-4");
 
         assertThat(several.group()).isNull();
         assertThat(line().tax(VatGroup.DDV_V, several).build().vatGroup()).isEqualTo(VatGroup.DDV_V);
@@ -117,7 +117,7 @@ class LineTest {
 
     @Test
     void aMarginSchemeIndicatorIsRefusedBecauseNoDocumentSaysHowItIsComputed() {
-        TaxIndicator margin = TaxIndicators.SNAPSHOT_2026_10_16.get("DDV-M-18");
+        TaxIndicator margin = TaxIndicators.SNAPSHOT_2026_08_27.get("DDV-M-18");
 
         assertThatThrownBy(() -> line().tax(VatGroup.DDV_A, margin).build())
                 .hasMessageContaining("margin-scheme");

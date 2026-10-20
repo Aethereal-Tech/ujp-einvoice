@@ -161,7 +161,7 @@ it is written for every kind.
 `VatGroup` SHALL be `DDV_A` 18, `DDV_V` 10, `DDV_B` 5 and `DDV_G` 0. `TaxIndicator(code, vatImpact, group, note)` SHALL
 carry the impact (`STANDARD`, `NULA`, `OSLOBODEN`, `PRENESEN`, and `MARGINALNA` from the gateway's `TaxIndicatorDto`),
 the rate group the catalogue pairs it with (`null` when it offers several) and a note, which is required unless the
-impact is `STANDARD`. A line's group SHALL agree with its indicator's. `TaxIndicators.SNAPSHOT_2026_10_16` SHALL hold
+impact is `STANDARD`. A line's group SHALL agree with its indicator's. `TaxIndicators.SNAPSHOT_2026_08_27` SHALL hold
 the 90 sales indicators of `/danocni-indikatori`, retrieved 2026-10-19, looked up by code; an indicator outside it is
 constructed by stating its impact. The calculation is driven by the impact and not by the code. A margin-scheme
 (`MARGINALNA`) indicator is refused on a line, because no obtained document says how the gateway computes it.

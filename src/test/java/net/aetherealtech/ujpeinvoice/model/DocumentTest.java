@@ -135,7 +135,7 @@ class DocumentTest {
 
     @Test
     void oneIndicatorInTwoGroupsGivesTwoEntries() {
-        TaxIndicator several = TaxIndicators.SNAPSHOT_2026_10_16.get("DDV-14-4");
+        TaxIndicator several = TaxIndicators.SNAPSHOT_2026_08_27.get("DDV-14-4");
         Document document = DocumentFixtures.invoice()
                 .line(Line.builder().description("v").quantity("1").unitPrice("100").tax(VatGroup.DDV_V, several).build())
                 .line(Line.builder().description("b").quantity("1").unitPrice("100").tax(VatGroup.DDV_B, several).build())
@@ -146,7 +146,7 @@ class DocumentTest {
 
     @Test
     void aTransferredTaxIsInThePerIndicatorTotalsAndNotInTheDocumentTotals() {
-        TaxIndicator transferred = TaxIndicators.SNAPSHOT_2026_10_16.get("DDV-11-A-G");
+        TaxIndicator transferred = TaxIndicators.SNAPSHOT_2026_08_27.get("DDV-11-A-G");
         Document document = DocumentFixtures.invoice()
                 .line(Line.builder().description("works").quantity("1").unitPrice("1000").tax(VatGroup.DDV_A, transferred).build())
                 .build();
@@ -162,7 +162,7 @@ class DocumentTest {
 
     @Test
     void anExemptSaleHasNoVatAnywhere() {
-        TaxIndicator exempt = TaxIndicators.SNAPSHOT_2026_10_16.get("DDV-9-1");
+        TaxIndicator exempt = TaxIndicators.SNAPSHOT_2026_08_27.get("DDV-9-1");
         Document document = DocumentFixtures.invoice()
                 .line(Line.builder().description("service").quantity("1").unitPrice("1111").tax(VatGroup.DDV_G, exempt).build())
                 .build();

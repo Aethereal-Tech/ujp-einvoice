@@ -129,7 +129,8 @@ public final class TaxIndicators {
             DDV-14-3-5|STANDARD|B|Промет кој подлежи на оданочување со ДДВ согласно член 14 став 3 од ЗДДВ
             """;
 
-    public static final Snapshot SNAPSHOT_2026_10_16 = new Snapshot(LocalDate.of(2026, 10, 19), parse());
+    // Named for the page's last edit, which is the version of the catalogue it holds; retrievedOn is when it was read.
+    public static final Snapshot SNAPSHOT_2026_08_27 = new Snapshot(LocalDate.of(2026, 10, 19), parse());
 
     private TaxIndicators() {
     }

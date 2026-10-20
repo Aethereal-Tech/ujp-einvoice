@@ -193,7 +193,7 @@ class UjpJsonSerializerTest {
     void aTransferredIndicatorIsWrittenWithItsNoteAndTheVatOnlyInThePerIndicatorTotals() {
         Document document = DocumentFixtures.invoice()
                 .line(Line.builder().description("works").quantity("1").unitPrice("1000")
-                        .tax(VatGroup.DDV_A, TaxIndicators.SNAPSHOT_2026_10_16.get("DDV-11-A-G")).build())
+                        .tax(VatGroup.DDV_A, TaxIndicators.SNAPSHOT_2026_08_27.get("DDV-11-A-G")).build())
                 .build();
         JsonObject written = body(document);
         JsonObject vat = (JsonObject) written.getArray("vatTotals").items().getFirst();

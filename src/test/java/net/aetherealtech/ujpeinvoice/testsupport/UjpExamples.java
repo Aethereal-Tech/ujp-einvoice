@@ -111,7 +111,7 @@ public final class UjpExamples {
                         .quantity("1").unitPrice("1111").standardRate(VatGroup.DDV_V).build())
                 .line(Line.builder().sku("123456").senderCode("12345").description("Opis123456").unit("par.")
                         .quantity("1").unitPrice("90").tax(VatGroup.DDV_G,
-                                TaxIndicators.SNAPSHOT_2026_10_16.get("DDV-G"))
+                                TaxIndicators.SNAPSHOT_2026_08_27.get("DDV-G"))
                         .build())
                 .build();
     }

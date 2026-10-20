@@ -9,7 +9,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class TaxIndicatorsTest {
 
-    private static final TaxIndicators.Snapshot SNAPSHOT = TaxIndicators.SNAPSHOT_2026_10_16;
+    private static final TaxIndicators.Snapshot SNAPSHOT = TaxIndicators.SNAPSHOT_2026_08_27;
 
     @Test
     void theSnapshotIsDatedAndHoldsTheNinetySalesIndicatorsOfThePage() {
