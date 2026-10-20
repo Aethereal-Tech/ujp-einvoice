@@ -2,8 +2,8 @@ package net.aetherealtech.ujpeinvoice.signing;
 
 /**
  * Produces a compact JWS (RFC 7515) over a payload. One implementation ships with this library,
- * {@link JwsRs256Signer}, using RS256 — the algorithm hands-on integrator accounts describe the UJP
- * gateway as requiring. This interface exists so a different algorithm, or a hardware-backed signer
+ * {@link JwsRs256Signer}, using RS256, the algorithm UJP's FAQ states (efakturawiki.ujp.gov.mk, {@code /ЧПП},
+ * section 2). This interface exists so a different algorithm, or a hardware-backed signer
  * that never exposes the private key to this process at all, is a new implementation rather than a
  * change to anything in {@code net.aetherealtech.ujpeinvoice.transport}.
  */

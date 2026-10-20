@@ -66,7 +66,7 @@
 
 ## 7. Signing
 
-- [ ] 7.1 Header `{"alg":"RS256","typ":"JWT"}` cited to the FAQ, with its marker removed. `x5c` keeps its marker.
+- [x] 7.1 Header `{"alg":"RS256","typ":"JWT"}` cited to the FAQ, with its marker removed. `x5c` keeps its marker.
 
 ## 8. Transport
 

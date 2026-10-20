@@ -11,25 +11,42 @@ organization without any of them able to disturb another.
 
 ### Requirement: JwsRs256Signer produces compact JWS using SHA256withRSA, with no JOSE library
 `JwsRs256Signer` SHALL produce compact JWS using RS256 (`SHA256withRSA`), built from `java.security` and this
-library's own JSON writer, with no JOSE library dependency.
+library's own JSON writer, with no JOSE library dependency. The protected header SHALL be exactly
+`{"alg":"RS256","typ":"JWT"}`, with `alg` first.
+
+The header and the signature are **verified**, cited to UJP's FAQ (`https://efakturawiki.ujp.gov.mk/ЧПП`, page
+`updated-at` 2026-06-09, retrieved 2026-10-19), section 2 „Генерирање на JWS барање": the header example is
+`{"alg": "RS256", "typ": "JWT"}` and `signature = RSA-SHA256(BASE64URL(header) . BASE64URL(payload))`. The marker on
+the algorithm is gone. The gateway's API description (`specification-status/openapi-2026-10-20.md`) shows an example
+token whose header decodes to `{"alg":"RS256"}`; its payload part is empty, so it is an illustration of the outer
+shape and not a statement of the header, and the FAQ governs.
 
 #### Scenario: A payload is signed
 - **WHEN** `JwsRs256Signer.signCompact(byte[] payload)` is called
 - **THEN** it returns a compact JWS signed with RS256 (`SHA256withRSA`), produced without any JOSE library
+- **AND** its decoded header is the text `{"alg":"RS256","typ":"JWT"}`
 
-### Requirement: a supplied certificate chain goes in the header's x5c claim; otherwise the header is bare
+#### Scenario: The signature is checked by a second implementation
+- **WHEN** `scripts/verify-jws.py` runs
+- **THEN** OpenSSL verifies a token this signer produced, and the script asserts the same header text
+
+### Requirement: a supplied certificate chain goes in the header's x5c claim; otherwise the header has no x5c
 When a certificate chain is supplied, `JwsRs256Signer` SHALL place it in the header's `x5c` claim (RFC 7515
-§4.1.6); without one, the header SHALL be a bare `{"alg":"RS256"}`.
+§4.1.6) after `alg` and `typ`; without one, the header SHALL be the bare `{"alg":"RS256","typ":"JWT"}`.
 
-Whether UJP expects `x5c` on this endpoint is unconfirmed — see `specification-status`.
+`x5c` is **opt-in and `@ProvisionalSpec`** (on `JwsRs256Signer.x5c()`). No obtained document mentions it: the gateway
+identifies the signing certificate by the certificate registered for the company plus the `X-SERIAL-NUMBER` request
+header (`E5012`, serial mismatch), and the FAQ's header example has two members. Whether the gateway accepts,
+ignores or rejects the claim is unknown. The default is therefore the key-only constructor, which sends exactly what
+the FAQ shows, and the chain constructor is for a caller who has learned otherwise from the sandbox.
 
 #### Scenario: A signer is built without a certificate chain
 - **WHEN** `new JwsRs256Signer(PrivateKey privateKey)` is used with no certificate chain
-- **THEN** the JWS header is the bare `{"alg":"RS256"}`
+- **THEN** the JWS header is the bare `{"alg":"RS256","typ":"JWT"}`
 
 #### Scenario: A signer is built with a certificate chain
 - **WHEN** `new JwsRs256Signer(PrivateKey privateKey, List<X509Certificate> certificateChain)` is used
-- **THEN** the certificate chain appears in the header's `x5c` claim
+- **THEN** the certificate chain appears in the header's `x5c` claim, after `alg` and `typ`
 
 ### Requirement: JwsRs256Signer holds no static or JVM-global state
 `JwsRs256Signer` SHALL declare no non-final static field, and two signers built from two keystores in one JVM SHALL

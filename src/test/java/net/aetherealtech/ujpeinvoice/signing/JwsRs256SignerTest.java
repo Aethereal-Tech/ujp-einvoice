@@ -41,7 +41,7 @@ class JwsRs256SignerTest {
 
         Base64.Decoder decoder = Base64.getUrlDecoder();
         String header = new String(decoder.decode(parts[0]), StandardCharsets.UTF_8);
-        assertThat(JsonParser.parse(header)).isEqualTo(JsonObject.builder().put("alg", "RS256").build());
+        assertThat(header).isEqualTo("{\"alg\":\"RS256\",\"typ\":\"JWT\"}");
         assertThat(decoder.decode(parts[1])).isEqualTo(payload);
 
         assertThat(verifiesIndependently(parts, keyPair.getPublic())).isTrue();
@@ -120,6 +120,8 @@ class JwsRs256SignerTest {
         JsonObject headerJson = (JsonObject) JsonParser.parse(header);
 
         assertThat(headerJson.getString("alg")).isEqualTo("RS256");
+        assertThat(headerJson.getString("typ")).isEqualTo("JWT");
+        assertThat(headerJson.members().keySet()).containsExactly("alg", "typ", "x5c");
         List<X509Certificate> chain = fixture.certificateChain();
         String expectedDer = Base64.getEncoder().encodeToString(chain.get(0).getEncoded());
         assertThat(headerJson.getArray("x5c").items()).hasSize(chain.size());

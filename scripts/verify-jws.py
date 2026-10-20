@@ -13,7 +13,8 @@ What it does, end to end:
   3. Splits the compact JWS, base64url-decodes the signature, and shells out to
      `openssl dgst -sha256 -verify` with the OpenSSL-generated public key to verify the signing
      input (header + "." + payload) against that signature.
-  4. Also decodes the header and payload to confirm they round-trip to the expected JSON.
+  4. Also decodes the header and payload to confirm they round-trip to the expected JSON; the header is
+     exactly {"alg":"RS256","typ":"JWT"}, as UJP's FAQ (/ЧПП, section 2) states it.
 
 Prerequisites: `openssl`, `javac`/`java` (JDK 25+) on PATH, and `mvn ... compile` already run so
 target/classes exists (run `./mvnw compile` first if needed).
@@ -105,7 +106,7 @@ def main() -> int:
         payload_json = b64url_decode(payload_b64).decode("utf-8")
         print(f"3. Decoded header:  {header_json}")
         print(f"   Decoded payload: {payload_json}")
-        if header_json != '{"alg":"RS256"}':
+        if header_json != '{"alg":"RS256","typ":"JWT"}':
             print(f"FAIL: unexpected header shape: {header_json}")
             return 1
         if payload_json != PAYLOAD:
