@@ -66,22 +66,23 @@
 
 ## 7. Signing
 
-- [ ] 7.1 Header `{"alg":"RS256","typ":"JWT"}` cited to the FAQ, with its marker removed. `x5c` keeps its marker.
+- [x] 7.1 Header `{"alg":"RS256","typ":"JWT"}` cited to the FAQ, with its marker removed. `x5c` keeps its marker.
 
 ## 8. Transport
 
-- [ ] 8.1 Send path, envelope, the four headers, and `UjpClient.Builder` requiring the EUJP id, the ЕДБ and the
+- [x] 8.1 Send path, envelope, the four headers, and `UjpClient.Builder` requiring the EUJP id, the ЕДБ and the
   certificate serial.
-- [ ] 8.2 `requestTimestamp` from `/server-time`, and the one-request-per-second throttle.
-- [ ] 8.3 `current-status` and its history call. Status is the served code/name pair, with the ten known codes as
+- [x] 8.2 `requestTimestamp` from `/server-time`, and the one-request-per-second throttle.
+- [x] 8.3 `current-status` and its history call. Status is the served code/name pair, with the ten known codes as
   constants.
-- [ ] 8.4 The submit response fields. The error body is kept raw.
-- [ ] 8.5 WireMock coverage of every path above. No real host appears anywhere in the tests.
+- [x] 8.4 The submit response fields. The error body is kept raw.
+- [x] 8.5 WireMock coverage of every path above. No real host appears anywhere in the tests.
 
 ## 9. Schema gate (needs 0.4)
 
-- [ ] 9.1 Commit the `einvoice_api` OpenAPI under `src/test/resources`, and validate every status, catalogue and
-  error body the client parses against it with a test-scoped validator.
+- [x] 9.1 Commit the `einvoice_api` OpenAPI under `src/test/resources`, and validate every status, catalogue and
+  error body the client parses against it. Done with a small checker in the test sources and no dependency; it checks
+  shape, not optionality (the description declares almost no `required`), and the client parses no catalogue.
 - [ ] 9.2 Settle `docAlt`'s type, null versus omit, `docGrossAmountR`'s rounding and the undocumented members. Remove
   each remaining marker the schema confirms, with a citation.
 - [ ] 9.3 Re-run the comparison against `/известувања` and record anything newer in a dated comparison file.

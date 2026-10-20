@@ -1,5 +1,6 @@
 package net.aetherealtech.ujpeinvoice.signing;
 
+import net.aetherealtech.ujpeinvoice.ProvisionalSpec;
 import net.aetherealtech.ujpeinvoice.internal.json.JsonArray;
 import net.aetherealtech.ujpeinvoice.internal.json.JsonObject;
 import net.aetherealtech.ujpeinvoice.internal.json.JsonString;
@@ -27,12 +28,20 @@ import java.util.List;
  * never has to verify a compact serialization it did not itself produce). If a future requirement
  * needs more of the JOSE surface than that, reconsider then.
  *
- * <p>The certificate chain, if supplied, is carried in the JWS header's {@code x5c} claim (RFC 7515
- * §4.1.6) so a verifier can recover the signer's certificate from the token itself — the shape a
- * qualified-certificate signature commonly takes. Whether the UJP gateway actually expects {@code
- * x5c} on this endpoint is unconfirmed (see the README's "Specification status" section); omitting
- * the chain produces a bare {@code {"alg":"RS256"}} header, which is the safer default until that is
- * confirmed one way or the other.
+ * <p>The protected header is exactly {@code {"alg":"RS256","typ":"JWT"}}, as UJP's FAQ states it
+ * (efakturawiki.ujp.gov.mk, {@code /ЧПП}, page {@code updated-at} 2026-06-09, retrieved 2026-10-19, section
+ * 2 „Генерирање на JWS барање": the header example {@code {"alg":"RS256","typ":"JWT"}} and
+ * {@code signature = RSA-SHA256(BASE64URL(header) . BASE64URL(payload))}). The gateway's API
+ * description shows a truncated example token whose header decodes to {@code {"alg":"RS256"}}; that example
+ * has an empty payload and is not a statement of the header, so the FAQ is followed.
+ *
+ * <p><strong>{@code x5c} is opt-in, and its acceptance is unconfirmed.</strong> No obtained document mentions
+ * it: the gateway identifies the signing certificate by the one registered for the company plus the
+ * {@code X-SERIAL-NUMBER} request header ({@code E5012}, serial mismatch). So the single-argument
+ * constructor writes no {@code x5c}, and the header is the two members above. Only the constructor that is
+ * handed a certificate chain adds {@code x5c} (RFC 7515 §4.1.6, base64 DER, leaf first), which a verifier
+ * may use to recover the certificate from the token alone. Whether the gateway accepts, ignores or rejects
+ * the claim is not known.
  */
 public final class JwsRs256Signer implements Signer {
 
@@ -67,19 +76,25 @@ public final class JwsRs256Signer implements Signer {
     }
 
     private String header() {
-        JsonObject.Builder builder = JsonObject.builder().put("alg", "RS256");
+        JsonObject.Builder builder = JsonObject.builder().put("alg", "RS256").put("typ", "JWT");
         if (!certificateChain.isEmpty()) {
-            List<JsonValue> x5c = new ArrayList<>(certificateChain.size());
-            for (X509Certificate certificate : certificateChain) {
-                try {
-                    x5c.add(new JsonString(Base64.getEncoder().encodeToString(certificate.getEncoded())));
-                } catch (CertificateEncodingException e) {
-                    throw new SigningException("Failed to DER-encode a certificate for the JWS x5c header", e);
-                }
-            }
-            builder.put("x5c", JsonArray.of(x5c));
+            builder.put("x5c", x5c());
         }
         return JsonWriter.write(builder.build());
+    }
+
+    @ProvisionalSpec("x5c: no obtained document mentions it; the gateway identifies the certificate by the "
+            + "registered certificate and X-SERIAL-NUMBER (E5012). Written only when a chain is supplied.")
+    private JsonArray x5c() {
+        List<JsonValue> encoded = new ArrayList<>(certificateChain.size());
+        for (X509Certificate certificate : certificateChain) {
+            try {
+                encoded.add(new JsonString(Base64.getEncoder().encodeToString(certificate.getEncoded())));
+            } catch (CertificateEncodingException e) {
+                throw new SigningException("Failed to DER-encode a certificate for the JWS x5c header", e);
+            }
+        }
+        return JsonArray.of(encoded);
     }
 
     private byte[] sign(byte[] signingInput) {

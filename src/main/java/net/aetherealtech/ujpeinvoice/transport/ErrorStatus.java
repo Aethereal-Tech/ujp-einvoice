@@ -37,8 +37,10 @@ public record ErrorStatus(String errorCode, String errorMessage, Map<String, Lis
     }
 
     /**
-     * Reads the {@code errorStatus} member of a response body, or empty if the body is not a JSON object or
-     * has no object-valued {@code errorStatus}. A body that is not JSON, or whose {@code errorStatus} is not
+     * Reads the error of a response body, or empty if the body is not a JSON object or carries neither shape.
+     * Two shapes are read, because the API description itself declares both: the {@code errorStatus} member of a
+     * {@code GenericAPIResponse} (the shape its examples show on every operation), and a bare
+     * {@code ErrorStatusBean} at the top level, which {@code current-status} declares for its 400 and 500 responses. A body that is not JSON, or whose {@code errorStatus} is not
      * the documented shape, is empty rather than an error: this is for enriching a failure that is already being
      * reported.
      */
@@ -47,9 +49,13 @@ public record ErrorStatus(String errorCode, String errorMessage, Map<String, Lis
             return Optional.empty();
         }
         try {
-            if (JsonParser.parse(body) instanceof JsonObject response
-                    && response.get("errorStatus").orElse(null) instanceof JsonObject status) {
-                return Optional.of(fromJson(status));
+            if (JsonParser.parse(body) instanceof JsonObject response) {
+                if (response.get("errorStatus").orElse(null) instanceof JsonObject status) {
+                    return Optional.of(fromJson(status));
+                }
+                if (response.get("errorCode").orElse(null) instanceof JsonString) {
+                    return Optional.of(fromJson(response));
+                }
             }
         } catch (RuntimeException e) {
             return Optional.empty();

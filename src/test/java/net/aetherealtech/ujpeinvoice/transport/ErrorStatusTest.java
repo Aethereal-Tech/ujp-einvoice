@@ -68,6 +68,14 @@ class ErrorStatusTest {
     }
 
     @Test
+    void parsesABareErrorStatusBeanToo() {
+        assertThat(ErrorStatus.fromResponseBody(
+                "{\"errorCode\":\"E5000\",\"errorMessage\":\"Internal server error\","
+                        + "\"errorPropertyMap\":{\"euid\":[\"must not be blank\"]}}"))
+                .contains(new ErrorStatus("E5000", "Internal server error", Map.of("euid", List.of("must not be blank"))));
+    }
+
+    @Test
     void whatIsNotAnErrorStatusIsEmptyRatherThanAnError() {
         assertThat(ErrorStatus.fromResponseBody(null)).isEmpty();
         assertThat(ErrorStatus.fromResponseBody("not json")).isEmpty();

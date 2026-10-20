@@ -43,7 +43,8 @@ The `signing` package SHALL hold the `Signer` interface, `JwsRs256Signer`, `Sign
 
 ### Requirement: transport depends on Serializer and Signer as interfaces, never their implementations
 The `transport` package SHALL hold `UjpClient`, `UjpEndpoints`, `SubmissionResult`, `SubmissionStatus`,
-`UjpException` and `UjpTransportException`, and SHALL depend on `Serializer` and `Signer` as interfaces, never
+`StatusChange`, `StatusReason`, `UjpException`, `UjpTransportException`, `ErrorStatus`, `ErrorNamespace`,
+`UjpErrorCode`, `UjpErrorCodes` and the package-private `Throttle`, and SHALL depend on `Serializer` and `Signer` as interfaces, never
 directly on `UjpJsonSerializer` or `JwsRs256Signer`.
 
 #### Scenario: transport is composed with a Serializer and a Signer, not a concrete class

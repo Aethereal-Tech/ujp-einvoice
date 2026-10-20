@@ -46,6 +46,12 @@ coverage up.
 - **WHEN** `transport`'s test coverage is assessed
 - **THEN** it is proven through WireMock tests, not chased to the same 90% figure as the other three packages
 
+#### Scenario: A transport test needs the gateway
+- **WHEN** a transport test needs a gateway
+- **THEN** it is WireMock on localhost, the throttle runs on a fake clock so nothing sleeps for real, and no UJP host
+  appears in a request, a link or a body; `OpenApiConformanceTest` additionally checks the `einvoice_api` side against
+  the committed API description (`transport`)
+
 ### Requirement: the serializer is pinned by golden files, regenerated deliberately
 `UjpJsonSerializer`'s output SHALL be pinned by golden files in `src/test/resources/golden/`, one per worked example of
 UJP's 08.10 primer: `invoice-ordinary.json`, `invoice-storno.json`, `invoice-correction.json`,

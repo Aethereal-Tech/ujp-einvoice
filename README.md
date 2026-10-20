@@ -1,7 +1,7 @@
 # ujp-einvoice
 
 A Java library for the North Macedonian UJP e-Faktura e-invoicing gateway: a serialization-agnostic
-invoice domain model, RS256 JWS signing, and an HTTP client — built with zero runtime dependencies,
+document model, RS256 JWS signing, and an HTTP client — built with zero runtime dependencies,
 targeting JDK 25+.
 
 > [!WARNING]
@@ -76,25 +76,29 @@ a confirmed legal deadline. See `openspec/changes/wire-layer-correction/`.
 Three independent layers, so a corrected spec touches as little as possible:
 
 ```
-model            Invoice, Party, Address, LineItem, VatCategory, Totals, DocumentType,
-  |              DocumentReference — no knowledge that JSON exists. An Invoice is a plain invoice
-  |              by default, or a credit/debit note naming the invoice it corrects. A Party is a
-  |              company (name + ЕДБ + complete address) or a natural person (a name, and nothing
-  |              else that is required).
+model            Document and the types of UJP's type pages (Header, Party, Line, Payment, VatGroup,
+  |              TaxIndicator, DocumentKind, Mode, ...) in UJP's own concepts. It names no wire field
+  |              and knows no JSON. Totals are computed from the lines, never accepted.
   |
-serialization    Serializer interface. UjpJsonSerializer is the one shipped implementation of the
-  |              reconstructed wire shape above. A UBL serializer, or a corrected JSON shape, is a
-  |              new implementation of Serializer — not a change to `model`.
+serialization    Serializer interface. UjpJsonSerializer is the one shipped implementation, writing the
+  |              JSON UJP's type pages and worked examples describe. A UBL serializer would be a new
+  |              implementation of Serializer, not a change to `model`.
   |
 signing          Signer interface. JwsRs256Signer signs with JDK-only primitives (java.security),
   |              holds no static state, and is built per organization from that organization's own
   |              keystore. Pkcs12KeyStores / Pkcs11KeyStores load the private key.
   |
-transport        UjpClient (java.net.http) composes a Serializer and a Signer to submit and poll.
-                 Every endpoint path lives in UjpEndpoints, whose javadoc restates the caveat above.
+transport        UjpClient (java.net.http) composes a Serializer and a Signer to submit a Document and
+                 poll its status, reading the gateway's clock for every request timestamp and spacing
+                 requests one second apart. Every endpoint lives in UjpEndpoints, cited to its source.
 ```
 
 ## Quickstart
+
+> [!CAUTION]
+> This shows the shape of the API. **Do not run it against a real UJP host:** the `UjpClient` ban stands. It is never
+> called for a real submission until the specification is verified, a qualified certificate is registered and its
+> privileges are granted. The calls that would reach the gateway are commented out on purpose.
 
 ```java
 import net.aetherealtech.ujpeinvoice.model.*;
@@ -104,70 +108,68 @@ import net.aetherealtech.ujpeinvoice.signing.Pkcs12KeyStores;
 import net.aetherealtech.ujpeinvoice.signing.SigningCredential;
 import net.aetherealtech.ujpeinvoice.transport.*;
 
-import java.math.BigDecimal;
+import java.net.URI;
 import java.time.LocalDate;
 
-// 1. Build the invoice. Totals are computed from the line items — there is no way to hand-construct
-//    an Invoice whose totals disagree with what its lines add up to.
-Invoice invoice = Invoice.builder()
-        .invoiceNumber("INV-2026-0001")
-        .issueDate(LocalDate.now())
-        .currency("MKD")
+// 1. Build the document. Its kind says which fields it must carry, and a missing one is refused by name
+//    before anything is signed. Totals are computed from the lines; a document whose totals disagree with
+//    its lines cannot be constructed.
+LocalDate today = LocalDate.now();
+Document invoice = Document.builder(DocumentKind.INVOICE)
+        .header(Header.of("INV-2026-0001", "1", today).withTurnoverDate(today))
         .seller(Party.company("Seller DOOEL", "4030012345678",
-                new Address("Bul. Partizanski Odredi 1", "Skopje", "1000", "MK")))
+                new Address("Bul. Partizanski Odredi", "1", "1000", "Skopje")))
         .buyer(Party.company("Buyer DOO", "4057098765432",
-                new Address("Ul. Makedonija 10", "Bitola", "7000", "MK")))
-        .addLineItem("Consulting services", new BigDecimal("2"), new BigDecimal("100.00"),
-                VatCategory.STANDARD_18)
+                new Address("Ul. Makedonija", "10", "7000", "Bitola")))
+        .payment(Payment.of(PaymentType.P_12))
+        .line(Line.builder()
+                .description("Consulting services")
+                .unit("hour")
+                .quantity("2")
+                .unitPrice("100")
+                .standardRate(VatGroup.DDV_A)
+                .build())
         .build();
 
-// A private individual buys with a name and nothing else — no ЕДБ, and no address required. Any
-// part of an address that IS on record can be given; an absent country reads as "MK".
-Party consumer = Party.naturalPerson("Ана Ангеловска");
-Party consumerWithCityOnly = Party.naturalPerson("Ана Ангеловска",
-        new Address(null, "Битола", null, null));
-
-// A credit note („книжно одобрение") must name the invoice it corrects. Its amounts stay positive:
-// the document type carries the direction. A line may state its unit — free text, omitted if absent.
-Invoice creditNote = Invoice.builder()
-        .invoiceNumber("CN-2026-0007")
-        .issueDate(LocalDate.now())
-        .currency("MKD")
-        .seller(invoice.seller())
-        .buyer(invoice.buyer())
-        .documentType(DocumentType.CREDIT_NOTE)
-        .correctedInvoice(new DocumentReference("INV-2026-0001", LocalDate.of(2026, 8, 28)))
-        .addLineItem("Consulting services (partial credit)", BigDecimal.ONE, new BigDecimal("100.00"),
-                VatCategory.STANDARD_18, "час")
-        .build();
-
-// 2. Load the signing key. One keystore per organization, straight from bytes — nothing touches
-//    disk, and the single private key entry is found without being told its alias.
+// 2. Load the signing key. One keystore per organization, straight from bytes: nothing touches disk, and the
+//    single private key entry is found without being told its alias. For a qualified certificate on its
+//    issuing USB token, see Pkcs11KeyStores.
 SigningCredential credential = Pkcs12KeyStores.load(p12Bytes, password);
-// ...an InputStream works the same way (read fully, and left open for its owner to close), as does
-// a Path. For a qualified certificate on its issuing USB token, see Pkcs11KeyStores.
 
-// 3. Submit against the sandbox (UjpClient defaults to UjpEndpoints.TEST_BASE_URL).
+// 3. Build the client. Nothing defaults: the host, the signer's e-УЈП id, the company's ЕДБ and the
+//    certificate's serial number are all yours to state. The signer below writes the header exactly as UJP's
+//    FAQ shows it, {"alg":"RS256","typ":"JWT"}; the gateway identifies the certificate by X-SERIAL-NUMBER, so
+//    the key alone is passed. new JwsRs256Signer(key, chain) would add an x5c claim that no obtained document
+//    mentions, and whether the gateway accepts it is unknown.
 UjpClient client = UjpClient.builder()
+        .baseUrl(gatewayHost)                    // a URI you chose deliberately; there is no default
+        .eujpId(eujpId)
+        .edb("4030012345678")
+        .certificateSerialNumber(serialNumber)
         .serializer(new UjpJsonSerializer())
-        .signer(new JwsRs256Signer(credential.privateKey(), credential.certificateChain()))
+        .signer(new JwsRs256Signer(credential.privateKey()))
         .build();
 
-try {
-    SubmissionResult result = client.submit(invoice);
-    System.out.println("EUID: " + result.euid() + ", QR: " + result.qrLink());
-} catch (UjpException e) {
-    System.err.println("Rejected: " + e.errorCode() + " — " + e.getMessage());
-}
+// 4. These would call the gateway. Each first reads its server time, so each takes at least a second:
+//
+// SubmissionResult receipt = client.submit(invoice);            // euid(), qrLink(), timestamp(), ...
+// SubmissionStatus status = client.status(receipt.euid());      // code(), name() as the gateway serves them
+// status.is(SubmissionStatus.ACCEPTED);                         // a code outside the ten known ones passes through
+// client.statusHistory(receipt.euid(), LocalDate.of(2026, 1, 1)); // dateFrom's format is provisional
+//
+// A refusal is a UjpException: httpStatus(), namespace() (EINVOICE_API or JSON_RECEIVER), errorCode(),
+// known() against the published catalogue, and responseBody() exactly as received. A request that never
+// completed, or an answer that could not be read, is a UjpTransportException.
 ```
 
 A `JwsRs256Signer` is an instance holding no JVM-global state, so a process serving many
-organizations builds one per organization and each signs with its own key.
+organizations builds one per organization and each signs with its own key. A `UjpClient` is throttled per instance
+to the gateway's limit of one request per second per user, so keep one instance per user.
 
 ## Certificate registration prerequisite
 
-Per integrator accounts (see "Specification status" above), submitting invoices requires a
-KIBS- or Telekom-issued **qualified certificate**, pre-registered against your taxpayer account at
+Submitting invoices requires a **qualified certificate** from any North Macedonian provider of qualified trust
+services, in software or on a USB token (UJP's FAQ, `/ЧПП`, section 1), pre-registered against your taxpayer account at
 `eujptest.ujp.gov.mk/ureg` (sandbox) before the corresponding production registration. A certificate
 that signs correctly but was never registered there is the likely cause of error `E1012`, which the official
 catalogue gives as "Certificate not found" (`UjpErrorCodes.lookup(ErrorNamespace.JSON_RECEIVER, "E1012")`).
