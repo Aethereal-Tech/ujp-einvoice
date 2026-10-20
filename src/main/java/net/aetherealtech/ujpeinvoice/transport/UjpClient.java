@@ -3,7 +3,7 @@ package net.aetherealtech.ujpeinvoice.transport;
 import net.aetherealtech.ujpeinvoice.internal.json.JsonObject;
 import net.aetherealtech.ujpeinvoice.internal.json.JsonParser;
 import net.aetherealtech.ujpeinvoice.internal.json.JsonValue;
-import net.aetherealtech.ujpeinvoice.model.Invoice;
+import net.aetherealtech.ujpeinvoice.model.Document;
 import net.aetherealtech.ujpeinvoice.serialization.Serializer;
 import net.aetherealtech.ujpeinvoice.signing.Signer;
 
@@ -15,9 +15,11 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 
 /**
- * A client for the UJP e-Faktura gateway: serializes an {@link Invoice}, signs it, and posts the
+ * A client for the UJP e-Faktura gateway: serializes a {@link Document}, signs it, and posts the
  * result over {@code java.net.http}. Composed from {@link Serializer} and {@link Signer} rather than
  * hard-wiring either, so a corrected schema or a different signing setup is a constructor argument,
  * not a change to this class.
@@ -46,9 +48,12 @@ public final class UjpClient {
         return new Builder();
     }
 
-    /** Serializes, signs, and submits {@code invoice}. Throws {@link UjpException} on any failure. */
-    public SubmissionResult submit(Invoice invoice) {
-        byte[] payload = serializer.serialize(invoice);
+    /** Serializes, signs, and submits {@code document}. Throws {@link UjpException} on any failure. */
+    public SubmissionResult submit(Document document) {
+        // The gateway's own clock is the one to follow (+-5 minutes); sourcing the timestamp from its
+        // server-time service is the transport step of wire-layer-correction (task 8.2).
+        LocalDateTime requestTimestamp = LocalDateTime.now(ZoneId.of("Europe/Skopje"));
+        byte[] payload = serializer.serialize(document, requestTimestamp);
         String jws = signer.signCompact(payload);
         HttpRequest request = HttpRequest.newBuilder(baseUrl.resolve(UjpEndpoints.SALES_INVOICE_SEND))
                 .header("Content-Type", "application/jose")

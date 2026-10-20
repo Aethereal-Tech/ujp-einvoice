@@ -41,9 +41,4 @@ public final class Money {
     public static BigDecimal whole(BigDecimal value) {
         return value.setScale(WHOLE_SCALE, MODE);
     }
-
-    /** Rounds to {@link #TOTAL_SCALE} decimals. Kept until the old model that calls it is removed. */
-    public static BigDecimal round(BigDecimal value) {
-        return total(value);
-    }
 }

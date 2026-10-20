@@ -1,24 +1,27 @@
 package net.aetherealtech.ujpeinvoice.serialization;
 
-import net.aetherealtech.ujpeinvoice.model.Invoice;
+import net.aetherealtech.ujpeinvoice.model.Document;
+
+import java.time.LocalDateTime;
 
 /**
- * Turns an {@link Invoice} into the bytes a gateway expects on the wire.
+ * Turns a {@link Document} into the bytes a gateway expects on the wire.
  *
- * <p>One implementation ships with this library: {@link UjpJsonSerializer}, whose javadoc and
- * {@code openspec/specs/specification-status/spec.md} explain exactly which parts of its output
- * are confirmed against the official UJP schema and which are this library's best reconstruction.
- *
- * <p>This interface is the seam that keeps that uncertainty from spreading. A corrected schema, or
- * an entirely different wire format such as UBL 2.1, is a new implementation of {@code Serializer} —
- * not a change to {@link Invoice} or to anything in {@code net.aetherealtech.ujpeinvoice.signing} or
- * {@code .transport}, both of which depend only on this interface and never on the JSON shape
- * underneath it.
+ * <p>One implementation ships with this library: {@link UjpJsonSerializer}, the shape UJP's type
+ * pages and worked examples describe. An entirely different wire format, such as UBL 2.1, would be
+ * a new implementation of this interface, which {@code signing} and {@code transport} depend on
+ * without knowing the JSON underneath.
  */
 public interface Serializer {
 
-    /** Renders {@code invoice} as wire bytes in this serializer's format. */
-    byte[] serialize(Invoice invoice);
+    /**
+     * Renders {@code document} as wire bytes in this serializer's format.
+     *
+     * @param requestTimestamp the request's timestamp, Skopje local time; the gateway refuses one more
+     *                         than five minutes from its own clock, so the transport sources it from the
+     *                         gateway's server-time service
+     */
+    byte[] serialize(Document document, LocalDateTime requestTimestamp);
 
     /** The MIME content type of {@link #serialize}'s output (e.g. for an HTTP {@code Content-Type}). */
     String contentType();
