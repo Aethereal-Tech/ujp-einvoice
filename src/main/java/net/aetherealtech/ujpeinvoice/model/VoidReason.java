@@ -1,5 +1,7 @@
 package net.aetherealtech.ujpeinvoice.model;
 
+import net.aetherealtech.ujpeinvoice.ProvisionalSpec;
+
 /**
  * Why a document is stornoed: a code and its name from the gateway's code list ("Причини за
  * сторнирање", sifrarnici of 24.04.2026). The list is served by the gateway, so any pair is
@@ -19,6 +21,8 @@ public record VoidReason(String code, String name) {
         name = Check.required(name, "voidReason", "name", 200);
     }
 
+    @ProvisionalSpec("The code list says 'Друго (внес на слободен текст)'; that the comment is therefore mandatory "
+            + "is the library's reading")
     boolean needsComment() {
         return this.equals(S_5);
     }

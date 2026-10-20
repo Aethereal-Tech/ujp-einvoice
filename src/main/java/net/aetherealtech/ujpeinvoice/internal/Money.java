@@ -1,5 +1,7 @@
 package net.aetherealtech.ujpeinvoice.internal;
 
+import net.aetherealtech.ujpeinvoice.ProvisionalSpec;
+
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 
@@ -37,7 +39,12 @@ public final class Money {
         return value.setScale(TOTAL_SCALE, MODE);
     }
 
-    /** Rounds to a whole number, e.g. 3417.1001 -&gt; 3417. */
+    /**
+     * Rounds to a whole number, e.g. 3417.1001 -&gt; 3417. The 28.04 changelog calls docGrossAmountR
+     * "банкарско заокружување"; the newer /json-struktura says ordinary half-up. No example is a tie,
+     * so none settles it.
+     */
+    @ProvisionalSpec("docGrossAmountR: banking rounding (28.04 changelog) or half-up (/json-struktura, followed here)")
     public static BigDecimal whole(BigDecimal value) {
         return value.setScale(WHOLE_SCALE, MODE);
     }

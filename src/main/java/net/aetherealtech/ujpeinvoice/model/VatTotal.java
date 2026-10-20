@@ -1,5 +1,6 @@
 package net.aetherealtech.ujpeinvoice.model;
 
+import net.aetherealtech.ujpeinvoice.ProvisionalSpec;
 import net.aetherealtech.ujpeinvoice.internal.Money;
 
 import java.math.BigDecimal;
@@ -29,6 +30,9 @@ public record VatTotal(TaxIndicator indicator, VatGroup group, BigDecimal taxabl
         return grouped.values().stream().map(VatTotal::of).toList();
     }
 
+    @ProvisionalSpec("The API description says a PRENESEN indicator shows its VAT in the per-indicator totals with a "
+            + "note; that the amount is the base times the group's rate comes from the art. 32 example, which is "
+            + "not internally consistent")
     private static VatTotal of(List<Line> group) {
         Line first = group.getFirst();
         boolean transferred = first.taxIndicator().vatImpact() == VatImpact.PRENESEN;

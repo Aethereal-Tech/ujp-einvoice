@@ -65,6 +65,10 @@ import java.util.stream.IntStream;
  * {@code docStorno} member comes first in some and last in others); this order follows the tables'
  * UJP codes, with the groups in the order of the envelope above.
  */
+@ProvisionalSpec("The schema is unpublished (specification-status). Open: null for an absent scalar and [] for an "
+        + "empty list rather than omission; the envelope on 110, 120 and 130, whose examples are bare; the "
+        + "single reason object, where the 310 example writes both as null; leaving out every member no table "
+        + "documents; and which optional members are written when absent")
 public final class UjpJsonSerializer implements Serializer {
 
     private static final DateTimeFormatter TIMESTAMP = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");

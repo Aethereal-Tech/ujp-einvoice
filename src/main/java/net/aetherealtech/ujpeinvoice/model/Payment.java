@@ -1,5 +1,7 @@
 package net.aetherealtech.ujpeinvoice.model;
 
+import net.aetherealtech.ujpeinvoice.ProvisionalSpec;
+
 import java.time.LocalDate;
 import java.util.Currency;
 
@@ -8,6 +10,8 @@ import java.util.Currency;
  * 310; {@link Document} enforces that per kind. The currency defaults to MKD, the currency of every
  * example.
  */
+@ProvisionalSpec("An absent currency reads as MKD, the currency of every example; the tables mark the currency "
+        + "optional and say nothing about a default")
 public record Payment(PaymentType type, Integer dueDays, LocalDate dueDate, String terms, String interest,
                       String discount, String note, Currency currency) {
 
