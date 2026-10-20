@@ -8,14 +8,22 @@ import java.net.URI;
  * Every UJP e-Faktura HTTP endpoint this library calls, gathered in one place so a corrected value
  * only ever needs to change here.
  *
- * <p><strong>Every constant in this class is reconstructed, not verified.</strong> The paths are
- * assembled from hands-on Macedonian integrator accounts describing the {@code /JSONReceiver/...}
- * family of endpoints exercised against {@code efakturatest.ujp.gov.mk}; the official source —
- * efakturawiki.ujp.gov.mk's "API Спецификација" — is unreachable outside North Macedonian networks
- * and has not been read by anyone who built this library. See
- * {@code openspec/specs/specification-status/spec.md} and {@code openspec/specs/transport/spec.md}
- * for the full verified-vs-reconstructed inventory and {@code CLAUDE.md} for the rule that nothing
- * here may be marked verified without citing the specific section of the official spec that
+ * <p>One host serves two path roots: {@code /einvoice_api} (the services: server time, status, code lists)
+ * and {@code /JSONReceiver} (the intake of a signed document). The paths below carry their root in full, so
+ * a client needs only the host as its base URL.
+ *
+ * <p>Sources, as of the pages retrieved 2026-10-19 and the API description fetched 2026-10-20:
+ * <ul>
+ *   <li><strong>D1</strong>, „API Спецификација" ({@code https://efakturawiki.ujp.gov.mk/тест_апи}), sections
+ *       „API Documentation", „Време на сервер", „Праќање на документ", „Статус историја на документ" and
+ *       „Тековен статус на излезна фактура";</li>
+ *   <li>the <strong>API description</strong> of {@code einvoice_api}
+ *       ({@code specification-status/openapi-2026-10-20.md}, committed at
+ *       {@code src/test/resources/ujp/einvoice-api-openapi-2026-10-20.json}), which covers the {@code
+ *       /einvoice_api} paths only. The JSON Receiver has no published description.</li>
+ * </ul>
+ * The one constant that no obtained document states is {@link #PRODUCTION_BASE_URL}; it keeps its marker and
+ * is used by nothing. See {@code CLAUDE.md}: nothing here may be promoted without citing the section that
  * confirms it.
  */
 public final class UjpEndpoints {
@@ -24,33 +32,48 @@ public final class UjpEndpoints {
     }
 
     /**
-     * Sandbox environment base URL, for pre-production integration testing and for the certificate
-     * pre-registration step described at {@code eujptest.ujp.gov.mk/ureg}. PROVISIONAL: the host
-     * itself is as reported by integrators; not independently confirmed against the official spec.
+     * The sandbox host. D1 „API Documentation": {@code https://efakturatest.ujp.gov.mk/einvoice_api/} for the
+     * services and {@code https://efakturatest.ujp.gov.mk/JSONReceiver/api/v1/sales-invoices/send} for the
+     * intake. The client never defaults to it: pass it to the builder deliberately.
      */
-    @ProvisionalSpec("Host reported by integrators; scheme and exact hostname not independently confirmed.")
     public static final URI TEST_BASE_URL = URI.create("https://efakturatest.ujp.gov.mk");
 
     /**
-     * Production environment base URL. PROVISIONAL, and more speculative than {@link #TEST_BASE_URL}:
-     * inferred by removing "test" from the sandbox hostname, a pattern common to UJP's other systems,
-     * but not itself confirmed by any integrator account this library's authors found.
+     * Production environment base URL. No obtained document names a production host: every URL in D1 and in the
+     * API description is the sandbox. This is the sandbox name with "test" removed, never observed. The client
+     * does not use it as a default, and it must be confirmed with УЈП before any use.
      */
-    @ProvisionalSpec("Inferred from the sandbox hostname by pattern; not independently observed or confirmed.")
+    @ProvisionalSpec("Inferred from the sandbox hostname by pattern; no obtained document names a production host.")
     public static final URI PRODUCTION_BASE_URL = URI.create("https://efaktura.ujp.gov.mk");
 
     /**
-     * Submit a sales invoice for processing. PROVISIONAL: path as reported by integrators, expects a
-     * compact JWS (RS256) request body per those same accounts.
+     * {@code GET}: the gateway's clock, in the format {@code requestTimestamp} takes. D1 „Време на сервер":
+     * {@code GET - /api/v1/server-time}, answering {@code {"timestamp": "2025-11-19T10:45:51"}}; the API
+     * description's operation {@code getServerTime} places it under the {@code /einvoice_api} server.
      */
-    @ProvisionalSpec("Path as reported by integrators for JWS-signed sales invoice submission.")
-    public static final String SALES_INVOICE_SEND = "/JSONReceiver/sales-invoices/send";
+    public static final String SERVER_TIME = "/einvoice_api/api/v1/server-time";
 
     /**
-     * Poll submission status by EUID; {@code "%s"} is replaced with the URL-encoded EUID. PROVISIONAL
-     * and weaker than {@link #SALES_INVOICE_SEND}: this exact path pattern was not itself reported —
-     * it follows the send endpoint's naming convention, which is a guess about a guess.
+     * {@code POST}: submit a signed sales invoice. D1 „Праќање на документ":
+     * {@code https://efakturatest.ujp.gov.mk/JSONReceiver/api/v1/sales-invoices/send}, body
+     * {@code {requestTimestamp, jws}}. The only endpoint under {@code /JSONReceiver}.
      */
-    @ProvisionalSpec("Path pattern guessed by analogy with SALES_INVOICE_SEND; no direct integrator evidence found.")
-    public static final String SALES_INVOICE_STATUS_TEMPLATE = "/JSONReceiver/sales-invoices/status/%s";
+    public static final String SALES_INVOICE_SEND = "/JSONReceiver/api/v1/sales-invoices/send";
+
+    /**
+     * {@code POST}: a sales invoice's current status. D1 „Тековен статус на излезна фактура":
+     * {@code POST /api/v1/documents/sales-invoice/current-status}; the API description's operation
+     * {@code getSalesInvoicesCurrentStatus}, body {@code {jws}}, answering a
+     * {@code DocumentCurrentStatusResponse}.
+     */
+    public static final String SALES_INVOICE_CURRENT_STATUS =
+            "/einvoice_api/api/v1/documents/sales-invoice/current-status";
+
+    /**
+     * {@code POST}: a sales invoice's status history. D1 „Статус историја на документ":
+     * {@code POST /api/v1/documents/sales-invoice/status}; the API description's operation
+     * {@code getStatusSalesInvoice}, body {@code {jws}}, answering a {@code DocumentStatusChangesResponse}.
+     */
+    public static final String SALES_INVOICE_STATUS_HISTORY =
+            "/einvoice_api/api/v1/documents/sales-invoice/status";
 }

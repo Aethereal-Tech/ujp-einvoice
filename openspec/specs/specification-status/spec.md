@@ -109,6 +109,12 @@ how much it cares. The consequence for the client is configuration: it needs an 
 signing certificate's serial number before it can send anything. The gateway also limits a user to one request per
 second.
 
+All of this is built in `UjpClient` and cited to D1 „API Documentation", „Време на сервер" and „Праќање на документ"
+(`transport`): the builder requires the three identifiers, `X-DOC-TYPE-CODE` is the document kind's code, the send path
+carries `/api/v1`, `requestTimestamp` is read from `GET /einvoice_api/api/v1/server-time` on every call, and requests
+are spaced one second apart per client instance. `TEST_BASE_URL` and the send path lost their markers with that
+citation; the old `SALES_INVOICE_STATUS_TEMPLATE` is gone.
+
 #### Scenario: A request is built without the identifying headers
 - **WHEN** a request reaches the gateway without `X-EUJP-ID`, `X-EDB` or `X-SERIAL-NUMBER`
 - **THEN** it is refused for missing required headers, before any payload validation
@@ -176,6 +182,12 @@ library's own code called it a guess about a guess, and it was. The status vocab
 as a code list, so the corrected client carries the code and its name rather than a closed enumeration that goes
 stale.
 
+Built: `UjpClient.status` and `UjpClient.statusHistory`, cited to D1 „Тековен статус на излезна фактура" and „Статус
+историја на документ" and the API description's `getSalesInvoicesCurrentStatus` and `getStatusSalesInvoice`.
+`SubmissionStatus` carries the served `statusCode` and `statusName`; the ten codes of `/status` (`updated-at`
+2026-10-15) are named constants, and a code outside them passes through. The old four-word vocabulary and its marker
+are gone. The history call's `dateFrom` is the one open point (the table below).
+
 #### Scenario: A document's current status is wanted
 - **WHEN** a consumer asks for a submitted document's current status
 - **THEN** the request is a signed POST carrying the EUID, and the answer is a status code with its name
@@ -237,9 +249,11 @@ specification arriving — it is what the specification is now cited *for*.
 - **THEN** the section is cited, the marker is removed, and this capability is updated in the same change
 
 ### Requirement: these remain unverified even after the correction lands
-The production base URL, the signing algorithm and certificate-carrying choice, the choice between writing an explicit
-null and omitting a field, and `docGrossAmountR`'s rounding SHALL keep their `@ProvisionalSpec` markers after the wire
-layer is corrected.
+The production base URL, whether the JWS header carries `x5c`, the choice between writing an explicit null and omitting
+a field, and `docGrossAmountR`'s rounding SHALL keep their `@ProvisionalSpec` markers after the wire layer is
+corrected. The signing algorithm no longer does: the FAQ (`/ЧПП`, `updated-at` 2026-06-09, retrieved 2026-10-19,
+section 2 „Генерирање на JWS барање") states the header `{"alg":"RS256","typ":"JWT"}` and `signature =
+RSA-SHA256(...)`, so RS256 and `typ` are cited and `JwsRs256Signer` writes exactly that header (`signing`).
 
 Every URL in every obtained document names the sandbox host; no production host is published anywhere the
 investigation reached, so the production URL stays an inference drawn by removing "test" from a hostname. The
@@ -282,6 +296,11 @@ the markers they carried are removed with them. What carries `@ProvisionalSpec` 
 | `VoidReason`, `CorrectionReason` | the free-text comment of "Друго" is mandatory by the library's reading |
 | `Payment` | an absent currency reads as MKD |
 | `Money.whole` | `docGrossAmountR`: banking or half-up |
+| `JwsRs256Signer.x5c()` | the claim is written only when a chain is supplied; no obtained document mentions it, the certificate is identified by the registered certificate and `X-SERIAL-NUMBER` (`E5012`), and the FAQ's header has two members |
+| `UjpEndpoints.PRODUCTION_BASE_URL` | no obtained document names a production host; inferred from the sandbox name, used by nothing |
+| `UjpClient` content type | no document states the send request's `Content-Type`; it is `application/json`, as the `einvoice_api` operations declare |
+| `UjpClient.refusal` | the JSON Receiver's error body is unpublished; the two `einvoice_api` shapes are tried for it and anything else is kept raw |
+| `UjpClient.statusHistory` | `dateFrom`: a date-time in D1, a date in the API description's example; written as a date, omitted when `null` |
 
 Open questions for the schema, not decisions: the `ЗШ*` asterisk, the members the examples carry and no table documents
 (`source`, `*EinvoiceUser`, `docGlobalDiscountAmount`, `docItemUnitItemDiscountAmount`, `docItemHs`), `MARGINALNA`'s
