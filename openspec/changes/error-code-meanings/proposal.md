@@ -31,11 +31,10 @@ None.
 
 ## Status
 
-**Tag.** PARKED.
+**Tag.** LANDED.
 
-**Why it waits.** The meanings are known; the fix — replacing the flat constant set with a catalogue namespaced per
-API — lands as part of `wire-layer-correction`.
+**Landed with** `wire-layer-correction` task 3 on `next/1.0`: the five flat constants are replaced by the
+namespaced catalogue `UjpErrorCodes`, with `ErrorNamespace`, `UjpErrorCode`, `ErrorStatus` and `UjpException.known()`,
+recorded in `specification-status` and `transport`. Not archived: it archives with `wire-layer-correction`.
 
-**Reopens when** `wire-layer-correction` lands.
-
-**Prerequisites (owner).** Library maintainers.
+**Prerequisites (owner).** None remaining.

@@ -48,10 +48,16 @@ guess).
 - **WHEN** any constant from `UjpEndpoints` is relied upon before the verification pass lands
 - **THEN** it is treated as provisional at the confidence named above, not as a confirmed endpoint
 
-### Requirement: UjpException names the error codes with a reported meaning and those without one
-`UjpException` SHALL name `E1012_CERTIFICATE_NOT_REGISTERED` (the only one with a reported meaning), `E5004`,
-`E10001`, `E10002` and `E10003`.
+### Requirement: UjpException carries the code with its namespace and resolves it against the catalogue
+`UjpException` SHALL carry `httpStatus()`, `errorCode()`, `namespace()` (`null` when unknown), `responseBody()` (may
+be `null`) and `known()`, which resolves the namespace and code against `UjpErrorCodes`. It SHALL NOT name codes as
+constants. The catalogue and its provenance are recorded in `specification-status`.
 
-#### Scenario: The gateway returns E1012
-- **WHEN** the gateway returns error code E1012
-- **THEN** `UjpException.errorCode()` is `E1012_CERTIFICATE_NOT_REGISTERED`
+#### Scenario: The gateway returns a listed code from a known interface
+- **WHEN** an exception carries namespace `JSON_RECEIVER` and code `E1020`
+- **THEN** `known()` is the catalogue entry whose meaning is "Invalid calculated totals", and the same code under
+  `EINVOICE_API` resolves to a different meaning
+
+#### Scenario: The code is not listed, or the interface is not known
+- **WHEN** an exception carries a code the catalogue does not list, or no namespace
+- **THEN** `known()` is empty, and `errorCode()` and `responseBody()` are unchanged
