@@ -1,5 +1,6 @@
 package net.aetherealtech.ujpeinvoice.serialization;
 
+import net.aetherealtech.ujpeinvoice.internal.json.JsonArray;
 import net.aetherealtech.ujpeinvoice.internal.json.JsonBoolean;
 import net.aetherealtech.ujpeinvoice.internal.json.JsonNull;
 import net.aetherealtech.ujpeinvoice.internal.json.JsonObject;
@@ -294,6 +295,19 @@ class UjpExamplesTest {
             JsonObject vat = (JsonObject) document(UjpExamples.invoice(), UjpExamples.INVOICE_TIMESTAMP)
                     .getArray("vatTotals").items().getFirst();
             assertThat(vat.get("vatTaxIndicatorNote")).contains(JsonNull.INSTANCE);
+        }
+
+        @Test
+        void aNonStandardIndicatorsNoteComesFromTheCatalogueNotFromFreeText() {
+            // PDF pp. 4-8 print "не е ДДВ обврзник" for the DDV-G line. Decision 4: the note is the
+            // snapshot's, and a caller who wants other words constructs the TaxIndicator.
+            JsonArray vatTotals = document(UjpExamples.multiItemInvoice(), UjpExamples.INVOICE_TIMESTAMP)
+                    .getArray("vatTotals");
+            JsonObject exempt = (JsonObject) vatTotals.items().get(3);
+
+            assertThat(exempt.getString("vatTaxIndicator")).isEqualTo("DDV-G");
+            assertThat(exempt.getString("vatTaxIndicatorNote"))
+                    .isEqualTo("ДДВ не е пресметан согласно член 51 став 3 од ЗДДВ");
         }
 
         @Test
