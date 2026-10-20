@@ -2,8 +2,12 @@
 
 - [x] 0.1 Decide the version: 1.0.0 off `next/1.0` (owner, 2026-10-19).
 - [x] 0.2 Decide scope: 130 and 310 in 1.0, 170 out (owner, 2026-10-19).
-- [ ] 0.3 Approve the CLAUDE.md money-rule wording (design, decision 3). Blocks 4.1.
-- [ ] 0.4 Fetch `swagger.json` from the Swagger UI on the API host (a person; nothing in this project calls that host).
+- [x] 0.3 Approve the CLAUDE.md money-rule wording (owner, 2026-10-20), to land with 4.1: "BigDecimal and
+  RoundingMode.HALF_UP everywhere, via internal.Money, at the scale each layer carries: line values unrounded up to 4
+  decimals, VAT and document totals summed unrounded and rounded to 2, and the whole-number fields to 0 — as UJP's
+  /json-struktura states. Never a second rounding mode."
+- [ ] 0.4 Fetch `swagger.json` from the Swagger UI on the API host. The owner asked the maintainer to fetch it
+  (2026-10-20): a plain GET of the published API description, with no authentication and no call to any service.
   Blocks 9.
 - [ ] 0.5 Obtain a qualified certificate, register it at `eujptest.ujp.gov.mk/ureg`, and get the privileges granted.
   Blocks 10 only.

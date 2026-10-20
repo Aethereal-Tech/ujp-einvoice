@@ -233,8 +233,9 @@ Answered by the owner on 2026-10-19:
 
 Still open:
 
-1. The CLAUDE.md money rule's new wording (decision 3). This needs the owner's approval.
-2. Who fetches `swagger.json`, and when. This is a person's task, on the API host.
+1. The CLAUDE.md money rule's new wording is approved (owner, 2026-10-20); it lands with the money code.
+2. `swagger.json`: the owner asked the maintainer to fetch it (2026-10-20), as one GET of the published API
+   description, with no authentication.
 3. For UJP, should the owner choose to ask: the `ЗШ*` asterisk, `docAlt`'s type, the error body shape and the
    production base URL.
 4. **Order of work.** The library comes first: Invicta's advance and partial invoices were parked again
