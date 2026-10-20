@@ -71,3 +71,29 @@ updated in the same change.
 #### Scenario: A compact JWS is produced
 - **WHEN** `JwsRs256Signer` produces a compact JWS
 - **THEN** `scripts/verify-jws.py` can verify it independently of this library's own code
+
+### Requirement: next/1.0 publishes nothing and reaches master once, with BREAKING CHANGE in the merge body
+`next/1.0`, the integration branch of the wire-layer correction, SHALL publish nothing, and SHALL reach `master`
+exactly once, as a merge whose body carries `BREAKING CHANGE`. Work lands on it through pull requests, and
+`pr-check.yml` runs for pull requests into `master` and into `next/**`.
+
+`publish.yml` triggers on a push to `master` alone, so nothing on `next/1.0` mints a tag, a release or a package.
+Its version step reads the commit bodies since the last tag and bumps the major for `BREAKING CHANGE` (or a `!` after
+a type), the minor for `feat`, the patch for `fix`, `perf` and `refactor`, and nothing for `ci`, `docs`, `chore`,
+`test` and `style`. A merge whose body carries `BREAKING CHANGE` therefore cuts 1.0.0; a merge without it would cut
+a minor or patch of 0.2.x over a wire layer that is incompatible with it, which the `specification-status`
+capability rules out.
+
+`next/**` in `pr-check.yml`'s `branches:` is what lets a pull request into the integration branch run the full
+build; without it such a pull request runs no check at all. The merge to `master` waits for the schema gate
+(`specification-status`).
+
+#### Scenario: A pull request targets next/1.0
+- **WHEN** a pull request is opened against `next/1.0`
+- **THEN** `pr-check.yml` runs the same build and test suite as for `master`
+- **AND** nothing is published when it merges, because `publish.yml` does not run for that branch
+
+#### Scenario: next/1.0 is merged to master
+- **WHEN** `next/1.0` reaches `master`
+- **THEN** the merge body carries `BREAKING CHANGE`, so `publish.yml` derives the next major version
+- **AND** a merge without it is wrong, because the derived version would be a minor or patch of the old line
