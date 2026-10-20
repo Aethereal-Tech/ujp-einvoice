@@ -244,3 +244,128 @@ Still open:
    error body, and the production base URL.
 5. **Order of work.** The library comes first: Invicta's advance and partial invoices were parked again
    (owner, 2026-10-20). Kind 130 stays in 1.0, so Invicta's advance invoice will later be shaped to map onto it.
+
+## Appendix: the model, as types (decision 2)
+
+The shape every later step builds against. All types are in `model`; none names a wire field, and all are immutable
+records or enums. "Derived" means computed by the model from what the caller gave it and never accepted from the
+caller, the same rule `Totals` follows today.
+
+**The document.**
+
+- `Document(DocumentKind kind, Header header, Mode mode, List<Reference> references, Party seller, Party buyer,
+  Payment payment, List<Line> lines, Advance advance, Adjustments adjustments, List<Attribute> attributes)`.
+- Its derived parts are `DocumentTotals totals()` and `List<VatTotal> vatTotals()`, one entry per tax indicator, in
+  first-appearance order.
+- It is built through `Document.builder(kind)`.
+- The canonical constructor validates against `kind`, and refuses by name, with the field's UJP code in the message
+  (for example "UJP01-06 turnoverDate is required on a 100"). The UJP code is a citation, not a wire name.
+
+**The kind and its rules.**
+
+- `DocumentKind` is an enum of the scoped kinds:
+  - `INVOICE` 100, `CREDIT_NOTE` 110, `DEBIT_NOTE` 120, `ADVANCE_INVOICE` 130, `CASH_TURNOVER` 310;
+  - each with `code()` and its UJP name.
+- Its rule accessors are built from the type pages, as of the 2026-10-14/16 snapshot:
+  - `requiresTurnoverDate()`;
+  - `requiresReferences()`: the table marks it on 110 and 120; the 110 example contradicts it, so it stays
+    provisional;
+  - `allowsPayment()`: 110 and 120 have no payment group;
+  - `allowsAdvanceDeduction()`;
+  - the lengths that differ by kind, such as `docId` at 12 on 310.
+- A kind beyond the scope is a new constant, not a new type.
+
+**The mode: the `docStorno` axis.**
+
+- `Mode` is a sealed interface: `Ordinary`, `Storno(VoidReason reason, String comment)` and
+  `Correction(CorrectionReason reason, String comment)`.
+- `VoidReason` and `CorrectionReason` are code-plus-name values; the codes are served by the gateway (`S-1`,
+  `C01`, …).
+- A storno or a correction requires exactly one `Reference` of type `ST` naming the original. The library refuses
+  either without it.
+- **A storno negates every line's quantity.** The caller describes the original's lines and the model writes the
+  negative quantities, so a caller cannot negate one line and forget another. Unit prices stay positive, as in the
+  example. This is the only place a negative amount exists. The `product-boundaries` rule against negative
+  amounts on a credit note is untouched.
+
+**Header.**
+
+- `Header(String number, String id, LocalDate date, LocalDate turnoverDate, LocalDate deliveryDate, String delivery,
+  LocalDate periodStart, LocalDate periodEnd, String notes, String headerText, String footerText,
+  DocIndicator indicator, boolean alternativeMode)`.
+- `DocIndicator` holds the published values (`KONECNA`, `KOMISIONA`, `PN`, `PI`, `TUR`, `DOBRA`), and the kinds
+  each one is valid on. `null` means none.
+- `alternativeMode` is a boolean in the model whatever `docAlt` turns out to be on the wire (decision 6).
+
+**Parties.**
+
+- `Party(Country country, String tin, String foreignTin, String vatNumber, String name, Address address,
+  Subsidiary subsidiary, String contact, String email)`.
+- `Country(code, name)` defaults to MK, Северна Македонија.
+- `Address(street, number, postalCode, city)`: all four are required wherever the kind requires an address, which
+  is every scoped kind.
+- `Subsidiary(code, name, address)`.
+- The seller is still always an identified business. `Party.company` and `Party.naturalPerson` stay as factories;
+  a natural person is refused as a buyer on every scoped kind, because 170 is out of 1.0.
+
+**Lines.**
+
+- What the caller gives: `Line(String sku, String senderCode, String receiverCode, String description, String unit,
+  BigDecimal quantity, BigDecimal unitPrice, BigDecimal unitDiscount, VatGroup vatGroup, TaxIndicator taxIndicator,
+  Boolean domesticProduct, BasePrice basePrice, List<Attribute> attributes)`.
+  - `quantity` and `unitPrice` are at most 4 decimals, and refused beyond that rather than rounded.
+  - The line number is the position, from 1.
+- Derived, all at scale 4, `HALF_UP`:
+  - `unitPriceAfterDiscount = unitPrice − unitDiscount`;
+  - `unitVat = unitPriceAfterDiscount × rate`, where the rate is the group's when `taxIndicator.vatImpact()` is
+    `STANDARD`, and 0 otherwise;
+  - `totalBeforeDiscount = quantity × unitPrice`;
+  - `total = quantity × unitPriceAfterDiscount`;
+  - `totalVat = quantity × unitVat`;
+  - `totalWithVat = total + totalVat`.
+- `BasePrice(BigDecimal base, BigDecimal add, BigDecimal deduct, String type)` must satisfy
+  `base + add − deduct = unitPrice`, or the line is refused.
+
+**Tax.**
+
+- `VatGroup` is `DDV_A` 18, `DDV_V` 10, `DDV_B` 5 and `DDV_G` 0.
+- `TaxIndicator(String code, VatImpact vatImpact, VatGroup group, String note)`. `VatImpact` is `STANDARD`, `NULA`,
+  `OSLOBODEN` or `PRENESEN`.
+- `TaxIndicators.SNAPSHOT_2026_10_16` is the dated catalogue, looked up by code.
+- An indicator outside the snapshot is constructed explicitly, stating its impact and group.
+- The note is required where the snapshot says the gateway raises `E1032`.
+
+**Totals (derived).** These follow the published rule: line values are summed unrounded, then rounded.
+
+- `DocumentTotals`:
+  - `net`: Σ `totalBeforeDiscount`, at 2 dp;
+  - `discount`: Σ quantity × unitDiscount, at 2 dp;
+  - `netAfterDiscount`: Σ `total`, at 2 dp;
+  - `vat`: Σ `totalVat`, at 2 dp;
+  - `gross`: Σ `totalWithVat`, at 2 dp;
+  - `grossRounded`: the unrounded gross to 0 dp;
+  - `advanceAmount`;
+  - `increase` / `decrease`;
+  - `finalAmount = grossRounded − advanceAmount + increase − decrease`.
+- `VatTotal(TaxIndicator indicator, VatGroup group, BigDecimal taxable, BigDecimal vat, BigDecimal total)` is grouped
+  by indicator and rounded per group at 2 dp, from unrounded sums.
+- Checked against the examples:
+  - 100 ordinary: 95.2381 + 4.7619 → net 95.24, vat 4.76, gross 100, rounded 100.
+  - 310: 254.24 + 45.7632 → vat 45.76, gross 300.00 (from 300.0032), rounded 300.
+  - 130: gross 695.02, rounded 695.
+
+**The rest.**
+
+- `Advance(LocalDate date, String description, BigDecimal amount)`: a deduction on a final invoice, carried as a
+  whole number per UJP08-08. It is refused on a kind that does not allow it.
+- `Adjustments(increase, decrease)`: whole numbers that do not enter the tax base (UJP08-11/12).
+- `Payment(PaymentType type, Integer dueDays, LocalDate dueDate, String terms, String interest, String discount,
+  String note, Currency currency)`. `PaymentType` is a code-plus-description value (`P11`, …).
+- `Attribute(String name, String value, AttributeType type)`. `AttributeType` is `STR`, `DEC`, `INT` or `DATE`, and
+  the value is checked against the type.
+- `Reference(RefDocumentType type, LocalDate date, String number)`. `RefDocumentType` is a code-plus-name value with
+  the known constants (`ST` and the 15.10 additions); `number` is at most 36 characters, which fits an EUID.
+
+**Removed.** `Invoice`, `LineItem`, `Totals`, `CategoryTotal`, `VatCategory`, `DocumentType` and
+`DocumentReference` go in the same change that adds the types above. There is no deprecation period, since this
+release is already breaking.
