@@ -12,7 +12,9 @@ name: PR Check
 # commit message to inject into.
 on:
   pull_request:
-    branches: [master]
+    # next/** too: a breaking release is built on an integration branch and reaches master once, so its
+    # pull requests would otherwise run no checks at all.
+    branches: [master, 'next/**']
     # ready_for_review is what makes the draft skip below safe: without it, marking a PR ready fires
     # no event and the checks would never run at all.
     types: [opened, synchronize, reopened, ready_for_review]

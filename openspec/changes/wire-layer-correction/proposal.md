@@ -101,13 +101,15 @@ constructor and builder, the golden files, and `scripts/verify-jws.py`.
 
 **Tag.** Untagged — not built yet.
 
-**Why it waits.** Two things, both outside this change's reach: the gateway's own JSON Schema behind the Swagger UI
-at `efakturatest.ujp.gov.mk/einvoice_api/swagger-ui/index.html` has not been fetched — it sits on the API host, not
-the documentation host, so a person has to retrieve it, and D3's examples are illustrations rather than a
-substitute for it. And the version decision — 1.0.0, or a parallel package for the verified shape, but never
-`0.3.0` given the breadth of the break — has not been made.
+**Why it waits.** As of 2026-10-19 (`specs/specification-status/comparison-2026-10-19.md`), building no longer
+waits: the per-document-type field matrix is published, and with D1 and the 08.10 examples it is enough to build
+against. Two things remain outside this change's reach, and `design.md` decision 9 moves them from the start of the
+work to its end. The gateway's machine-readable schema is still only behind the Swagger UI on the API host, which a
+person has to fetch; it now gates publishing, not starting. The version decision — 1.0.0 off an integration branch,
+recommended, or a parallel package; never `0.3.0` — is still the owner's.
 
-**Reopens when** both the JSON Schema is in hand and the version decision is made.
+**Reopens when** the owner confirms the version decision; the work then proceeds on `next/1.0` per `tasks.md`, and
+merges to `master` only after the schema gate.
 
 **Prerequisites (owner).** The library owner — fetching the JSON Schema from the API host, and deciding the version
 number.
