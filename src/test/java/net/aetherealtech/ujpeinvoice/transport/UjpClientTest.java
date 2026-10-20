@@ -3,7 +3,7 @@ package net.aetherealtech.ujpeinvoice.transport;
 import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 import net.aetherealtech.ujpeinvoice.serialization.UjpJsonSerializer;
 import net.aetherealtech.ujpeinvoice.signing.JwsRs256Signer;
-import net.aetherealtech.ujpeinvoice.testsupport.InvoiceFixtures;
+import net.aetherealtech.ujpeinvoice.testsupport.DocumentFixtures;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
@@ -46,7 +46,7 @@ class UjpClientTest {
                                 "status":"ACCEPTED","message":"Invoice accepted"}""")));
 
         UjpClient client = clientFor(wireMock.baseUrl());
-        SubmissionResult result = client.submit(InvoiceFixtures.simpleInvoice());
+        SubmissionResult result = client.submit(DocumentFixtures.simpleInvoice());
 
         assertThat(result.euid()).isEqualTo("MK-EUID-12345");
         assertThat(result.qrLink()).isEqualTo("https://efakturatest.ujp.gov.mk/verify/MK-EUID-12345");
@@ -61,7 +61,7 @@ class UjpClientTest {
                         {"euid":"E1","qrLink":"L","status":"PENDING","message":"ok"}""")));
 
         UjpClient client = clientFor(wireMock.baseUrl());
-        client.submit(InvoiceFixtures.simpleInvoice());
+        client.submit(DocumentFixtures.simpleInvoice());
 
         wireMock.verify(postRequestedFor(urlPathEqualTo(UjpEndpoints.SALES_INVOICE_SEND))
                 .withHeader("Content-Type", equalTo("application/jose"))
@@ -89,7 +89,7 @@ class UjpClientTest {
 
         UjpClient client = clientFor(wireMock.baseUrl());
 
-        assertThatThrownBy(() -> client.submit(InvoiceFixtures.simpleInvoice()))
+        assertThatThrownBy(() -> client.submit(DocumentFixtures.simpleInvoice()))
                 .isInstanceOf(UjpException.class)
                 .satisfies(ex -> {
                     UjpException e = (UjpException) ex;
@@ -106,7 +106,7 @@ class UjpClientTest {
 
         UjpClient client = clientFor(wireMock.baseUrl());
 
-        assertThatThrownBy(() -> client.submit(InvoiceFixtures.simpleInvoice()))
+        assertThatThrownBy(() -> client.submit(DocumentFixtures.simpleInvoice()))
                 .isInstanceOf(UjpTransportException.class);
     }
 
@@ -117,7 +117,7 @@ class UjpClientTest {
 
         UjpClient client = clientFor(wireMock.baseUrl());
 
-        assertThatThrownBy(() -> client.submit(InvoiceFixtures.simpleInvoice()))
+        assertThatThrownBy(() -> client.submit(DocumentFixtures.simpleInvoice()))
                 .isInstanceOf(UjpTransportException.class);
     }
 
@@ -127,7 +127,7 @@ class UjpClientTest {
         // connection itself fails before any HTTP response exists.
         UjpClient client = clientFor(URI.create("http://127.0.0.1:1"));
 
-        assertThatThrownBy(() -> client.submit(InvoiceFixtures.simpleInvoice()))
+        assertThatThrownBy(() -> client.submit(DocumentFixtures.simpleInvoice()))
                 .isInstanceOf(UjpTransportException.class);
     }
 

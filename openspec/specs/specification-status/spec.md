@@ -237,25 +237,63 @@ specification arriving — it is what the specification is now cited *for*.
 - **THEN** the section is cited, the marker is removed, and this capability is updated in the same change
 
 ### Requirement: these remain unverified even after the correction lands
-The production base URL, the signing algorithm and certificate-carrying choice, the rounding convention, the choice
-between writing an explicit null and omitting a field, and the shape of a natural-person buyer SHALL keep their
-`@ProvisionalSpec` markers after the wire layer is corrected.
+The production base URL, the signing algorithm and certificate-carrying choice, the choice between writing an explicit
+null and omitting a field, and `docGrossAmountR`'s rounding SHALL keep their `@ProvisionalSpec` markers after the wire
+layer is corrected.
 
 Every URL in every obtained document names the sandbox host; no production host is published anywhere the
 investigation reached, so the production URL stays an inference drawn by removing "test" from a hostname. The
-rounding mode and scale are not published, and a wrong choice surfaces as a totals-mismatch refusal in production.
-The examples write explicit nulls throughout and the gateway's tolerance for omission is unstated, so following the
-examples is the defensible default rather than a known rule. And every one of the thirty-odd worked documents bills
-a **company**: the buyer's tax number and full address are marked mandatory, no example shows a natural person, and
-while the specification says some checks are skipped depending on the document type, it does not say which.
+rounding **mode and scale are now published** (/json-struktura, "Заокружување": `ROUND_HALF_UP`, four decimals on a
+line, two on the totals, whole numbers for UJP08-08 to UJP08-10) and the library follows them; what stays open is the
+rounding of `docGrossAmountR`, which the 28.04 changelog calls banking rounding and the newer guide calls ordinary, and
+which none of the worked examples (no value is a tie) can settle. The examples write explicit nulls throughout and the
+gateway's tolerance for omission is unstated, so following the examples is the defensible default rather than a known
+rule. Every one of the worked documents bills a **company**, and kind 170 (the invoice to a natural person) is not in
+1.0, so a natural-person buyer is refused by name rather than guessed at.
 
 #### Scenario: A consumer asks whether a private individual can be billed
 - **WHEN** a consumer needs to bill a natural person rather than a company
-- **THEN** the library states that the shape is unknown rather than guessing one
+- **THEN** the library refuses the buyer by name and states that the document is kind 170, which it does not ship
 
 #### Scenario: The production host is needed
 - **WHEN** a production base URL is needed
 - **THEN** it is treated as never observed, and confirmed with УЈП or read off the production portal before use
+
+### Requirement: the corrected document model and serializer are built, and these markers remain
+The model, the money rule and the serializer of the wire-layer correction are built, and the markers below SHALL stay
+until the schema confirms the choice they mark. The wire names `UjpJsonSerializer`
+writes are the ones the type pages' tables and the 08.10 examples print, each with its UJP code; they are cited to those
+pages, and none is **verified** against the gateway's schema (the previous requirement). The 0.2.0 reconstructions
+(`documentType`, `correctedInvoice`, `invoiceNumber`, `lineItems`, `byCategory` and the rest) went with the old model;
+the markers they carried are removed with them. What carries `@ProvisionalSpec` now, and why:
+
+| Where | What is open |
+|---|---|
+| `UjpJsonSerializer` | null/`[]` against omission; the envelope on 110, 120 and 130 (their examples are bare); one reason object where the 310 example writes both as null; no undocumented member written |
+| `header()` | `docAlt`: Boolean (changelog 14.09), Integer(4) (tables 08.10), `false` (the one 07.10 example); written as a boolean. `docIndicator` is written on all kinds though only 100 lists it |
+| `appendCurrencyRate` | `docCurrencyDate`/`docCurrencyExchRate`: the 130 and 310 tables list them, the examples print the document date and 1 |
+| `item()` | `docItemTotalOriginalPriceWoVat` is in every example and the 310 table, not the 100, 110, 120 or 130 tables |
+| `totals()` | the advance block and increase/decrease are in every example, but the advance rows are on the 100 table alone |
+| `vatTotal()` | an absent note is `null` (110, 130, 310 examples), where the 100 examples print `""` |
+| `TaxIndicators` | no `vatImpact` column on the page: every impact but those of `DDV-A/V/B/G` is the library's reading of the name |
+| `VatTotal.of` | the VAT shown under `PRENESEN` is the base times the group's rate; the art. 32 example that shows it is not internally consistent |
+| `DocumentKind.requiresReferences` | UJP02-01 is mandatory on 110 and 120; their examples send `[]`; reported, not enforced |
+| `Mode` | `docStorno` has no row on the 110, 120 and 130 pages; a storno is not refused there |
+| `VoidReason`, `CorrectionReason` | the free-text comment of "Друго" is mandatory by the library's reading |
+| `Payment` | an absent currency reads as MKD |
+| `Money.whole` | `docGrossAmountR`: banking or half-up |
+
+Open questions for the schema, not decisions: the `ЗШ*` asterisk, the members the examples carry and no table documents
+(`source`, `*EinvoiceUser`, `docGlobalDiscountAmount`, `docItemUnitItemDiscountAmount`, `docItemHs`), `MARGINALNA`'s
+arithmetic (the model refuses it), and the `vatType` of an indicator.
+
+#### Scenario: A marker is removed
+- **WHEN** the schema confirms one of these choices
+- **THEN** the marker goes, the section is cited, and this table changes in the same commit
+
+#### Scenario: A reader asks where the golden numbers come from
+- **WHEN** the figure in a golden is questioned
+- **THEN** it is the number UJP's own example prints, which a test asserts the model derives; the golden is this library's output
 
 ### Requirement: the gateway's own JSON Schema must be fetched from the API host before any field name is verified
 The JSON Schema the gateway validates against SHALL be fetched and read before any field name in the corrected

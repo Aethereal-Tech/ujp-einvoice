@@ -1,79 +1,76 @@
 package net.aetherealtech.ujpeinvoice.model;
 
 /**
- * A seller or buyer on an invoice, in one of two shapes.
+ * The seller or the buyer. The seller is always an identified business. A buyer is a business with
+ * a ЕДБ, or a non-resident with a foreign tax number; a private individual (kind 170) is out of
+ * scope, so {@link #naturalPerson} exists to be refused by name where a business is required.
  *
- * <p>A <strong>business</strong> ({@link #company}) carries everything: name, ЕДБ, and a complete
- * address. That is what a seller always is — {@link Invoice} requires it — and what a B2B buyer
- * normally is.
- *
- * <p>A <strong>natural person</strong> ({@link #naturalPerson}) carries a name and nothing else
- * that is required: no tax id, and an address that may be partial or absent entirely. Private
- * individuals buy things, and this library will not demand a city or a street from them ahead of a
- * specification nobody has read. If the eventual spec turns out to require more, that is a refusal
- * for the consumer to raise, by name, before it ever calls this library — not a rule to guess at
- * here, where guessing wrong means refusing invoices that are perfectly legal.
- *
- * <p>{@code name} is one string either way: an organization's registered name, or a person's name
- * composed however the consumer composes it (given plus family, or a single display name).
- *
- * <p>{@code taxId} is the ЕДБ (Единствен Даночен Број / unique tax number) — a public, well-known
- * identifier format in North Macedonia, not part of the unverified UJP wire spec. This library
- * requires it on a business and does not enforce the 13-digit format, so that legitimate edge cases
- * (foreign counterparties invoiced cross-border, sandbox test fixtures) are not rejected by a rule
- * this library cannot fully confirm.
+ * <p>The ЕДБ is required and not format-checked: a 13-digit rule would reject legitimate
+ * cross-border counterparties and fixture cases the library cannot confirm.
  */
-public record Party(String name, String taxId, Address address) {
+public record Party(Country country, String tin, String foreignTin, String vatNumber, String name, Address address,
+                    Subsidiary subsidiary, String contact, String email) {
 
     public Party {
-        if (name == null || name.isBlank()) {
-            throw new InvoiceValidationException("Party.name must not be blank");
-        }
-        if (taxId != null && taxId.isBlank()) {
-            throw new InvoiceValidationException("Party.taxId must not be blank; omit it instead");
-        }
+        country = country == null ? Country.MK : country;
+        tin = Check.optional(tin, "UJP03-03", "tin", 30);
+        foreignTin = Check.optional(foreignTin, "UJP05-04", "foreignTin", 30);
+        vatNumber = Check.optional(vatNumber, "UJP03-05", "vatNumber", 30);
+        name = Check.required(name, "UJP03-06", "name", 150);
+        contact = Check.optional(contact, "UJP03-11", "contact", 200);
+        email = Check.optional(email, "UJP03-12", "email", 60);
     }
 
-    /**
-     * A business: name, ЕДБ and a complete address, each refused by name if missing. This is the
-     * only shape a seller may take.
-     */
-    public static Party company(String name, String taxId, Address address) {
-        Party party = new Party(name, taxId, address);
-        String missing = party.missingCompanyField();
-        if (missing != null) {
-            throw new InvoiceValidationException("Party.company requires " + missing
-                    + "; use Party.naturalPerson for a private individual");
-        }
-        return party;
+    /** A business known by its ЕДБ, with a complete address. */
+    public static Party company(String name, String tin, Address address) {
+        Check.required(tin, "UJP03-03", "tin", 30);
+        Check.present(address, "UJP03-07", "address");
+        return new Party(Country.MK, tin, null, null, name, address, null, null, null);
     }
 
-    /** A private individual, known by name alone. */
+    /** A non-resident business: a foreign tax number (UJP05-04) in place of a ЕДБ. */
+    public static Party foreignCompany(Country country, String foreignTin, String name, Address address) {
+        Check.required(foreignTin, "UJP05-04", "foreignTin", 30);
+        Check.present(address, "UJP05-07", "address");
+        return new Party(country, null, foreignTin, null, name, address, null, null, null);
+    }
+
+    /** A private individual known by name; refused wherever a business is required. */
     public static Party naturalPerson(String name) {
-        return new Party(name, null, null);
+        return new Party(Country.MK, null, null, null, name, null, null, null, null);
     }
 
-    /**
-     * A private individual with whatever address is on record — any part of it may be absent, and
-     * an absent country is read as {@link Address#DEFAULT_COUNTRY}.
-     */
+    /** A private individual known by name and whatever address is on record. */
     public static Party naturalPerson(String name, Address address) {
-        return new Party(name, null, address);
+        return new Party(Country.MK, null, null, null, name, address, null, null, null);
     }
 
-    /** Whether this party is a private individual: a party without a tax id is one by definition. */
+    /** True exactly when the party carries no tax number of either kind. */
     public boolean isNaturalPerson() {
-        return taxId == null;
+        return tin == null && foreignTin == null;
     }
 
-    /** The first field a business is missing, qualified for a message, or null when complete. */
-    String missingCompanyField() {
-        if (taxId == null) {
-            return "taxId";
-        }
-        if (address == null) {
-            return "address";
-        }
-        return address.missingCompanyField();
+    public Party withCountry(Country value) {
+        return new Party(value, tin, foreignTin, vatNumber, name, address, subsidiary, contact, email);
+    }
+
+    public Party withForeignTin(String value) {
+        return new Party(country, tin, value, vatNumber, name, address, subsidiary, contact, email);
+    }
+
+    public Party withVatNumber(String value) {
+        return new Party(country, tin, foreignTin, value, name, address, subsidiary, contact, email);
+    }
+
+    public Party withSubsidiary(Subsidiary value) {
+        return new Party(country, tin, foreignTin, vatNumber, name, address, value, contact, email);
+    }
+
+    public Party withContact(String value) {
+        return new Party(country, tin, foreignTin, vatNumber, name, address, subsidiary, value, email);
+    }
+
+    public Party withEmail(String value) {
+        return new Party(country, tin, foreignTin, vatNumber, name, address, subsidiary, contact, value);
     }
 }

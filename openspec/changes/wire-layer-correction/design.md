@@ -331,7 +331,7 @@ caller, the same rule `Totals` follows today.
 - `VatGroup` is `DDV_A` 18, `DDV_V` 10, `DDV_B` 5 and `DDV_G` 0.
 - `TaxIndicator(String code, VatImpact vatImpact, VatGroup group, String note)`. `VatImpact` is `STANDARD`, `NULA`,
   `OSLOBODEN` or `PRENESEN`.
-- `TaxIndicators.SNAPSHOT_2026_10_16` is the dated catalogue, looked up by code.
+- `TaxIndicators.SNAPSHOT_2026_08_27` is the dated catalogue, looked up by code.
 - An indicator outside the snapshot is constructed explicitly, stating its impact and group.
 - The note is required where the snapshot says the gateway raises `E1032`.
 

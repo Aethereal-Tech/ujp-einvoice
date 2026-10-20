@@ -47,10 +47,12 @@ coverage up.
 - **THEN** it is proven through WireMock tests, not chased to the same 90% figure as the other three packages
 
 ### Requirement: the serializer is pinned by golden files, regenerated deliberately
-`UjpJsonSerializer`'s output SHALL be pinned by golden files in `src/test/resources/golden/`:
-`simple-invoice.json`, `multi-category-invoice.json`, `credit-note.json` and `consumer-invoice.json`. They SHALL be
-regenerated deliberately, never by hand-editing, and the `specification-status` inventory SHALL be updated in the
-same change.
+`UjpJsonSerializer`'s output SHALL be pinned by golden files in `src/test/resources/golden/`, one per worked example of
+UJP's 08.10 primer: `invoice-ordinary.json`, `invoice-storno.json`, `invoice-correction.json`,
+`invoice-multi-item.json`, `credit-note.json`, `debit-note.json`, `advance-invoice.json` and `cash-turnover.json`. They
+are this library's output and not UJP's JSON, which is not committed (see `serialization`). They SHALL be regenerated
+deliberately with `-Dgolden.regenerate=true`, never by hand-editing, and the `specification-status` inventory SHALL be
+updated in the same change.
 
 #### Scenario: A field genuinely needs to change
 - **WHEN** a serialized field genuinely needs to change

@@ -2,182 +2,80 @@ package net.aetherealtech.ujpeinvoice.serialization;
 
 import net.aetherealtech.ujpeinvoice.ProvisionalSpec;
 import net.aetherealtech.ujpeinvoice.internal.json.JsonArray;
+import net.aetherealtech.ujpeinvoice.internal.json.JsonBoolean;
+import net.aetherealtech.ujpeinvoice.internal.json.JsonNumber;
 import net.aetherealtech.ujpeinvoice.internal.json.JsonObject;
 import net.aetherealtech.ujpeinvoice.internal.json.JsonValue;
 import net.aetherealtech.ujpeinvoice.internal.json.JsonWriter;
 import net.aetherealtech.ujpeinvoice.model.Address;
-import net.aetherealtech.ujpeinvoice.model.CategoryTotal;
-import net.aetherealtech.ujpeinvoice.model.DocumentReference;
-import net.aetherealtech.ujpeinvoice.model.DocumentType;
-import net.aetherealtech.ujpeinvoice.model.Invoice;
-import net.aetherealtech.ujpeinvoice.model.LineItem;
+import net.aetherealtech.ujpeinvoice.model.Advance;
+import net.aetherealtech.ujpeinvoice.model.Attribute;
+import net.aetherealtech.ujpeinvoice.model.Document;
+import net.aetherealtech.ujpeinvoice.model.DocumentTotals;
+import net.aetherealtech.ujpeinvoice.model.Header;
+import net.aetherealtech.ujpeinvoice.model.Line;
+import net.aetherealtech.ujpeinvoice.model.Mode;
 import net.aetherealtech.ujpeinvoice.model.Party;
-import net.aetherealtech.ujpeinvoice.model.Totals;
-import net.aetherealtech.ujpeinvoice.model.VatCategory;
+import net.aetherealtech.ujpeinvoice.model.Payment;
+import net.aetherealtech.ujpeinvoice.model.Reference;
+import net.aetherealtech.ujpeinvoice.model.Subsidiary;
+import net.aetherealtech.ujpeinvoice.model.VatTotal;
 
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
-import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.IntStream;
 
 /**
- * Renders an {@link Invoice} as the proprietary UJP e-Faktura JSON shape — the one that gets signed
- * as a compact JWS (RS256) and posted to {@code /JSONReceiver/sales-invoices/send}, per hands-on
- * accounts from Macedonian integrators. This is <strong>not</strong> the UBL 2.1 / XAdES shape that
- * generic e-invoicing compliance sites describe for North Macedonia; that appears to be a mismatch
- * between generic vendor marketing and what the actual UJP endpoint accepts.
+ * Renders a {@link Document} as the JSON UJP's type pages and worked examples (primer_za_json of
+ * 08.10.2026) describe: the envelope {@code {requestTimestamp, document}} with {@code voidReason}
+ * or {@code correctionReason} beside {@code document}, and inside it {@code header},
+ * {@code docReferences}, {@code seller}, {@code buyer}, {@code docPayment}, {@code docItems},
+ * {@code docTotals}, {@code vatTotals} and {@code docAttributes}. Wire names are the ones in the
+ * tables; the model beneath names none of them.
  *
- * <h2>Specification status</h2>
- * <p>The authoritative source — efakturawiki.ujp.gov.mk's "API Спецификација" — is unreachable
- * outside North Macedonian networks and has not been read by anyone who built this library. Every
- * field name below is this library's best-effort reconstruction from third-party integrator reports
- * (submission responses carrying an EUID and a QR link; error codes such as E1012 and E5004) and is
- * marked {@link ProvisionalSpec}. Treat the exact field names, nesting, and code values as a
- * starting point to validate against a real sandbox account (efakturatest.ujp.gov.mk), not as a
- * confirmed contract. See {@code openspec/specs/specification-status/spec.md} for the complete
- * verified-vs-reconstructed inventory, including what is NOT reconstructed here (the VAT rates
- * themselves and the ЕДБ tax-id format are public North Macedonian tax law, independent of the UJP
- * wire format).
+ * <h2>What is written, and what is deliberately not</h2>
+ * <ul>
+ *   <li>The envelope is written for every kind. The 110, 120 and 130 examples show the bare body, but
+ *       the signed payload nests under {@code document} (specification-status).</li>
+ *   <li>An absent scalar or object is {@code null} and an empty list is {@code []}, as every example
+ *       writes them. This stays {@link ProvisionalSpec}: it is the examples' habit, not a published
+ *       rule, and the gateway's tolerance for omission is unstated.</li>
+ *   <li>A group the kind's table does not list is left out whole: {@code docPayment} on 110 and 120,
+ *       {@code docAttributes} and line {@code attributes} on all but 100. An optional member no
+ *       example carries (subsidiary, base price) is left out when absent rather than written as
+ *       {@code null}. The reason object that does not apply is left out too.</li>
+ *   <li>Nothing undocumented is written: not {@code source}, not a trailing {@code requestTimestamp},
+ *       not {@code sellerEinvoiceUser} or {@code buyerEinvoiceUser}, not
+ *       {@code docGlobalDiscountAmount}, {@code docItemUnitItemDiscountAmount} or
+ *       {@code docItemHs}. They appear in some examples and in no table.</li>
+ *   <li>{@code docCurrencyDate} and {@code docCurrencyExchRate} follow the kind: removed from 100 on
+ *       15.10, absent where there is no payment group, listed on 130 and 310.</li>
+ * </ul>
  *
- * <p>If the real schema turns out to differ, only this class (and its golden-file tests) needs to
- * change — {@link Invoice} and everything in {@code .signing} and {@code .transport} depend on
- * {@link Serializer}, not on this shape.
+ * <h2>Numbers</h2>
+ * Every number is written as a JSON number without trailing zeros: {@code 100}, {@code 3417.1},
+ * {@code 4.7619}, {@code -95.2381}. That is how every example prints its figures.
+ *
+ * <p>Member order within each object is fixed. The examples disagree among themselves (the
+ * {@code docStorno} member comes first in some and last in others); this order follows the tables'
+ * UJP codes, with the groups in the order of the envelope above.
  */
+@ProvisionalSpec("The schema is unpublished (specification-status). Open: null for an absent scalar and [] for an "
+        + "empty list rather than omission; the envelope on 110, 120 and 130, whose examples are bare; the "
+        + "single reason object, where the 310 example writes both as null; leaving out every member no table "
+        + "documents; and which optional members are written when absent")
 public final class UjpJsonSerializer implements Serializer {
 
-    /**
-     * Nothing in any integrator account mentions how UJP distinguishes an invoice from a credit or
-     * debit note, or how a note points at what it corrects. This field name, the codes written into
-     * it, and the reference object below are therefore not even a reconstruction — they are this
-     * library's own invention, with no evidence behind them at all. They are also the first thing
-     * to correct once the official spec can be read.
-     */
-    @ProvisionalSpec("Top-level field name for the document type. This library's own naming, with no "
-            + "evidence: no integrator account describes how UJP marks a credit or debit note.")
-    private static final String FIELD_DOCUMENT_TYPE = "documentType";
-
-    /**
-     * An {@link DocumentType#INVOICE} writes no type field at all, so an invoice's JSON is byte for
-     * byte what this serializer produced before notes existed. Inventing a field and putting it on
-     * every document would have changed a shape that is already unverified, for a distinction only
-     * a note needs to draw.
-     */
-    @ProvisionalSpec("Wire codes for the two note types. This library's own naming, with no evidence.")
-    private static final Map<DocumentType, String> DOCUMENT_TYPE_CODES = Map.of(
-            DocumentType.CREDIT_NOTE, "CREDIT_NOTE",
-            DocumentType.DEBIT_NOTE, "DEBIT_NOTE");
-
-    @ProvisionalSpec("Top-level field name for the reference to the corrected invoice, present only on "
-            + "a credit or debit note. This library's own naming, with no evidence.")
-    private static final String FIELD_CORRECTED_INVOICE = "correctedInvoice";
-
-    @ProvisionalSpec("Reference field name for the corrected invoice's number. This library's own "
-            + "naming, with no evidence.")
-    private static final String FIELD_REFERENCE_NUMBER = "number";
-
-    @ProvisionalSpec("Reference field name for the corrected invoice's issue date; ISO-8601 assumed. "
-            + "This library's own naming, with no evidence.")
-    private static final String FIELD_REFERENCE_ISSUE_DATE = "issueDate";
-
-    @ProvisionalSpec("Top-level field name for the invoice document number.")
-    private static final String FIELD_INVOICE_NUMBER = "invoiceNumber";
-
-    @ProvisionalSpec("Top-level field name for the issue date; ISO-8601 date format assumed.")
-    private static final String FIELD_ISSUE_DATE = "issueDate";
-
-    @ProvisionalSpec("Top-level field name for the due date; ISO-8601 date format assumed.")
-    private static final String FIELD_DUE_DATE = "dueDate";
-
-    @ProvisionalSpec("Top-level field name for the ISO 4217 currency code.")
-    private static final String FIELD_CURRENCY = "currency";
-
-    @ProvisionalSpec("Top-level field name for the seller party.")
-    private static final String FIELD_SELLER = "seller";
-
-    @ProvisionalSpec("Top-level field name for the buyer party.")
-    private static final String FIELD_BUYER = "buyer";
-
-    @ProvisionalSpec("Top-level field name for the line item array.")
-    private static final String FIELD_LINE_ITEMS = "lineItems";
-
-    @ProvisionalSpec("Top-level field name for the totals summary.")
-    private static final String FIELD_TOTALS = "totals";
-
-    @ProvisionalSpec("Party field name for the legal/trade name.")
-    private static final String FIELD_PARTY_NAME = "name";
-
-    @ProvisionalSpec("Party field name for the ЕДБ (unique tax number). The identifier format "
-            + "itself is public tax law; only this field NAME is reconstructed.")
-    private static final String FIELD_PARTY_TAX_ID = "taxId";
-
-    @ProvisionalSpec("Party field name for the postal address.")
-    private static final String FIELD_PARTY_ADDRESS = "address";
-
-    @ProvisionalSpec("Address field name for the street line.")
-    private static final String FIELD_ADDRESS_STREET = "street";
-
-    @ProvisionalSpec("Address field name for the city.")
-    private static final String FIELD_ADDRESS_CITY = "city";
-
-    @ProvisionalSpec("Address field name for the postal code.")
-    private static final String FIELD_ADDRESS_POSTAL_CODE = "postalCode";
-
-    @ProvisionalSpec("Address field name for the ISO 3166-1 alpha-2 country code.")
-    private static final String FIELD_ADDRESS_COUNTRY = "country";
-
-    @ProvisionalSpec("Line item field name for the free-text description.")
-    private static final String FIELD_LINE_DESCRIPTION = "description";
-
-    @ProvisionalSpec("Line item field name for the quantity.")
-    private static final String FIELD_LINE_QUANTITY = "quantity";
-
-    @ProvisionalSpec("Line item field name for the unit of measure, free text, omitted when absent. "
-            + "This library's own naming, with no evidence; nothing says UJP expects a unit at all, "
-            + "let alone a UN/ECE Rec 20 code.")
-    private static final String FIELD_LINE_UNIT = "unit";
-
-    @ProvisionalSpec("Line item field name for the per-unit price, before VAT.")
-    private static final String FIELD_LINE_UNIT_PRICE = "unitPrice";
-
-    @ProvisionalSpec("Line item field name for the VAT category code; see VatCategory.code().")
-    private static final String FIELD_LINE_VAT_CATEGORY = "vatCategory";
-
-    @ProvisionalSpec("Line item field name for the computed net amount.")
-    private static final String FIELD_LINE_NET_AMOUNT = "netAmount";
-
-    @ProvisionalSpec("Line item field name for the computed VAT amount.")
-    private static final String FIELD_LINE_VAT_AMOUNT = "vatAmount";
-
-    @ProvisionalSpec("Line item field name for the computed gross amount.")
-    private static final String FIELD_LINE_GROSS_AMOUNT = "grossAmount";
-
-    @ProvisionalSpec("Totals field name for the per-category subtotal array.")
-    private static final String FIELD_TOTALS_BY_CATEGORY = "byCategory";
-
-    @ProvisionalSpec("Totals field name for the invoice-wide net total.")
-    private static final String FIELD_TOTALS_NET = "netTotal";
-
-    @ProvisionalSpec("Totals field name for the invoice-wide VAT total.")
-    private static final String FIELD_TOTALS_VAT = "vatTotal";
-
-    @ProvisionalSpec("Totals field name for the invoice-wide gross total.")
-    private static final String FIELD_TOTALS_GROSS = "grossTotal";
-
-    @ProvisionalSpec("Category subtotal field name for which VAT category the entry covers.")
-    private static final String FIELD_CATEGORY = "category";
-
-    @ProvisionalSpec("Category subtotal field name for its net amount.")
-    private static final String FIELD_CATEGORY_NET = "net";
-
-    @ProvisionalSpec("Category subtotal field name for its VAT amount.")
-    private static final String FIELD_CATEGORY_VAT = "vat";
-
-    @ProvisionalSpec("Category subtotal field name for its gross amount.")
-    private static final String FIELD_CATEGORY_GROSS = "gross";
+    private static final DateTimeFormatter TIMESTAMP = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
 
     @Override
-    public byte[] serialize(Invoice invoice) {
-        return JsonWriter.write(toJson(invoice)).getBytes(StandardCharsets.UTF_8);
+    public byte[] serialize(Document document, LocalDateTime requestTimestamp) {
+        return JsonWriter.write(envelope(document, requestTimestamp)).getBytes(StandardCharsets.UTF_8);
     }
 
     @Override
@@ -185,109 +83,244 @@ public final class UjpJsonSerializer implements Serializer {
         return "application/json";
     }
 
-    private JsonObject toJson(Invoice invoice) {
-        JsonObject.Builder builder = JsonObject.builder();
-        if (invoice.documentType().corrects()) {
-            builder.put(FIELD_DOCUMENT_TYPE, DOCUMENT_TYPE_CODES.get(invoice.documentType()));
+    private JsonObject envelope(Document document, LocalDateTime requestTimestamp) {
+        JsonObject.Builder envelope = JsonObject.builder()
+                .put("requestTimestamp", TIMESTAMP.format(requestTimestamp))
+                .put("document", body(document));
+        switch (document.mode()) {
+            case Mode.Ordinary _ -> {
+            }
+            case Mode.Storno storno -> envelope.put("voidReason", JsonObject.builder()
+                    .put("voidCode", storno.reason().code())
+                    .put("voidReason", storno.reason().name())
+                    .put("voidComment", storno.comment())
+                    .build());
+            case Mode.Correction correction -> envelope.put("correctionReason", JsonObject.builder()
+                    .put("correctionReasonCode", correction.reason().code())
+                    .put("correctionReason", correction.reason().name())
+                    .put("correctionReasonComment", correction.comment())
+                    .build());
         }
-        builder.put(FIELD_INVOICE_NUMBER, invoice.invoiceNumber())
-                .put(FIELD_ISSUE_DATE, invoice.issueDate().toString());
-        if (invoice.dueDate() != null) {
-            builder.put(FIELD_DUE_DATE, invoice.dueDate().toString());
-        }
-        if (invoice.correctedInvoice() != null) {
-            builder.put(FIELD_CORRECTED_INVOICE, toJson(invoice.correctedInvoice()));
-        }
-        return builder
-                .put(FIELD_CURRENCY, invoice.currency().getCurrencyCode())
-                .put(FIELD_SELLER, toJson(invoice.seller()))
-                .put(FIELD_BUYER, toJson(invoice.buyer()))
-                .put(FIELD_LINE_ITEMS, lineItemsToJson(invoice.lineItems()))
-                .put(FIELD_TOTALS, toJson(invoice.totals()))
-                .build();
+        return envelope.build();
     }
 
-    private JsonObject toJson(DocumentReference reference) {
+    private JsonObject body(Document document) {
+        JsonObject.Builder body = JsonObject.builder()
+                .put("header", header(document))
+                .put("docReferences", array(document.references(), this::reference))
+                .put("seller", party("seller", document.seller()))
+                .put("buyer", party("buyer", document.buyer()));
+        if (document.kind().allowsPayment()) {
+            body.put("docPayment", document.payment() == null ? null : payment(document, document.payment()));
+        }
+        body.put("docItems", items(document))
+                .put("docTotals", totals(document.totals(), document.advance()))
+                .put("vatTotals", array(document.vatTotals(), this::vatTotal));
+        if (document.kind().allowsAttributes()) {
+            body.put("docAttributes", array(document.attributes(), this::attribute));
+        }
+        return body.build();
+    }
+
+    @ProvisionalSpec("docAlt: Boolean in the changelog of 14.09, Integer(4) in the type pages of 08.10, "
+            + "false in the only example that carries it; written as a JSON boolean. docIndicator is written "
+            + "for every kind though only 100 lists it, as the 110, 120, 130 and 310 examples do")
+    private JsonObject header(Document document) {
+        Header header = document.header();
         return JsonObject.builder()
-                .put(FIELD_REFERENCE_NUMBER, reference.number())
-                .put(FIELD_REFERENCE_ISSUE_DATE, reference.issueDate().toString())
+                .put("docStorno", number(storno(document.mode())))
+                .put("docType", document.kind().code())
+                .put("docAlt", JsonBoolean.of(header.alternativeMode()))
+                .put("docTypeName", document.kind().ujpName())
+                .put("docDate", date(header.date()))
+                .put("docDeliveryDate", date(header.deliveryDate()))
+                .put("docDelivery", header.delivery())
+                .put("docTurnoverDate", date(header.turnoverDate()))
+                .put("docPeriodStartDate", date(header.periodStart()))
+                .put("docPeriodEndDate", date(header.periodEnd()))
+                .put("docNumber", header.number())
+                .put("docId", header.id())
+                .put("docNotes", header.notes())
+                .put("docIndicator", header.indicator() == null ? null : header.indicator().name())
+                .put("docHeader", header.headerText())
+                .put("docFooter", header.footerText())
                 .build();
     }
 
-    private JsonObject toJson(Party party) {
-        JsonObject.Builder builder = JsonObject.builder().put(FIELD_PARTY_NAME, party.name());
-        putIfPresent(builder, FIELD_PARTY_TAX_ID, party.taxId());
-        if (party.address() != null) {
-            builder.put(FIELD_PARTY_ADDRESS, toJson(party.address()));
+    private JsonObject reference(Reference reference) {
+        return JsonObject.builder()
+                .put("docTypeRef", reference.type().code())
+                .put("docNameRef", reference.type().name())
+                .put("docDateRef", date(reference.date()))
+                .put("docNumberRef", reference.number())
+                .build();
+    }
+
+    private JsonObject party(String side, Party party) {
+        JsonObject.Builder builder = JsonObject.builder()
+                .put(side + "CCode", party.country().code())
+                .put(side + "CName", party.country().name())
+                .put(side + "Tin", party.tin())
+                .put(side + "ForeignTin", party.foreignTin())
+                .put(side + "VatNumber", party.vatNumber())
+                .put(side + "Name", party.name())
+                .put(side + "Address", address(party.address()));
+        Subsidiary subsidiary = party.subsidiary();
+        if (subsidiary != null) {
+            builder.put(side + "SubsidiaryCode", subsidiary.code())
+                    .put(side + "SubsidiaryName", subsidiary.name())
+                    .put(side + "SubsidiaryAddress", subsidiary.address());
+        }
+        return builder.put(side + "Contact", party.contact())
+                .put(side + "Email", party.email())
+                .build();
+    }
+
+    private JsonObject address(Address address) {
+        return JsonObject.builder()
+                .put("streetAddress", address.street())
+                .put("streetNumber", address.number())
+                .put("postalCode", address.postalCode())
+                .put("city", address.city())
+                .build();
+    }
+
+    private JsonObject payment(Document document, Payment payment) {
+        JsonObject.Builder builder = JsonObject.builder()
+                .put("docPaymentTypeCode", payment.type() == null ? null : payment.type().code())
+                .put("docPaymentTypeDesc", payment.type() == null ? null : payment.type().description())
+                .put("docPaymentTypeDueDays", payment.dueDays() == null ? null : number(payment.dueDays()))
+                .put("docPaymentTypeDueDate", date(payment.dueDate()))
+                .put("docPaymentTerms", payment.terms())
+                .put("docPaymentNote", payment.note())
+                .put("docPaymentInterest", payment.interest())
+                .put("docPaymentDiscount", payment.discount())
+                .put("docCurrency", payment.currency().getCurrencyCode())
+                .put("docCurrencyCode", payment.currency().getCurrencyCode());
+        if (document.kind().listsCurrencyRate()) {
+            appendCurrencyRate(builder, document, payment);
         }
         return builder.build();
     }
 
-    private JsonObject toJson(Address address) {
-        JsonObject.Builder builder = JsonObject.builder();
-        putIfPresent(builder, FIELD_ADDRESS_STREET, address.street());
-        putIfPresent(builder, FIELD_ADDRESS_CITY, address.city());
-        putIfPresent(builder, FIELD_ADDRESS_POSTAL_CODE, address.postalCode());
-        return builder.put(FIELD_ADDRESS_COUNTRY, address.country()).build();
-    }
-
-    private JsonArray lineItemsToJson(List<LineItem> lineItems) {
-        List<JsonValue> items = new ArrayList<>(lineItems.size());
-        for (LineItem lineItem : lineItems) {
-            items.add(toJson(lineItem));
-        }
-        return JsonArray.of(items);
-    }
-
-    private JsonObject toJson(LineItem lineItem) {
-        JsonObject.Builder builder = JsonObject.builder()
-                .put(FIELD_LINE_DESCRIPTION, lineItem.description())
-                .put(FIELD_LINE_QUANTITY, lineItem.quantity());
-        putIfPresent(builder, FIELD_LINE_UNIT, lineItem.unit());
-        return builder
-                .put(FIELD_LINE_UNIT_PRICE, lineItem.unitPrice())
-                .put(FIELD_LINE_VAT_CATEGORY, lineItem.vatCategory().code())
-                .put(FIELD_LINE_NET_AMOUNT, lineItem.netAmount())
-                .put(FIELD_LINE_VAT_AMOUNT, lineItem.vatAmount())
-                .put(FIELD_LINE_GROSS_AMOUNT, lineItem.grossAmount())
-                .build();
-    }
-
-    private JsonObject toJson(Totals totals) {
-        List<JsonValue> byCategory = new ArrayList<>(totals.byCategory().size());
-        // EnumMap iteration follows VatCategory's declaration order, so this is deterministic
-        // across runs and JVMs without an explicit sort — load-bearing for the golden-file tests.
-        for (CategoryTotal categoryTotal : totals.byCategory().values()) {
-            byCategory.add(toJson(categoryTotal));
-        }
-        return JsonObject.builder()
-                .put(FIELD_TOTALS_BY_CATEGORY, JsonArray.of(byCategory))
-                .put(FIELD_TOTALS_NET, totals.netTotal())
-                .put(FIELD_TOTALS_VAT, totals.vatTotal())
-                .put(FIELD_TOTALS_GROSS, totals.grossTotal())
-                .build();
-    }
-
-    private JsonObject toJson(CategoryTotal categoryTotal) {
-        return JsonObject.builder()
-                .put(FIELD_CATEGORY, categoryTotal.category().code())
-                .put(FIELD_CATEGORY_NET, categoryTotal.net())
-                .put(FIELD_CATEGORY_VAT, categoryTotal.vat())
-                .put(FIELD_CATEGORY_GROSS, categoryTotal.gross())
-                .build();
-    }
-
     /**
-     * An absent optional field is left out of the object entirely rather than written as {@code ""}
-     * or {@code null}. Which of the three UJP accepts is unknown; omission is the one that cannot be
-     * mistaken for a value the seller supplied, and it is what a natural-person buyer's missing
-     * street or tax id relies on (see {@code Party.naturalPerson}).
+     * Every 130 and 310 example writes the document's own date and a rate of 1 beside MKD. The model
+     * holds no exchange rate, so a payment in another currency writes {@code null} for both, which
+     * the tables mark optional (UJP10-10 is О on 310 and ОП on 130, UJP10-11 is О on both).
      */
-    @ProvisionalSpec("Omitting an absent field, rather than writing an empty string or null, is this "
-            + "library's own choice; the gateway's tolerance for either is unverified.")
-    private static void putIfPresent(JsonObject.Builder builder, String field, String value) {
-        if (value != null) {
-            builder.put(field, value);
+    @ProvisionalSpec("The date and rate beside MKD are what the 130 and 310 examples print; no table says how "
+            + "they are filled, and the model has no exchange rate for another currency")
+    private void appendCurrencyRate(JsonObject.Builder builder, Document document, Payment payment) {
+        boolean domestic = payment.currency().getCurrencyCode().equals("MKD");
+        builder.put("docCurrencyDate", domestic ? date(document.header().date()) : null)
+                .put("docCurrencyExchRate", domestic ? number(1) : null);
+    }
+
+    private JsonArray items(Document document) {
+        List<Line> lines = document.effectiveLines();
+        return JsonArray.of(IntStream.range(0, lines.size())
+                .mapToObj(index -> item(document, index + 1, lines.get(index)))
+                .toList());
+    }
+
+    @ProvisionalSpec("docItemTotalOriginalPriceWoVat is in every example and in the 310 table (UJP07-15), but "
+            + "not in the 100, 110, 120 or 130 tables")
+    private JsonObject item(Document document, int lineNumber, Line line) {
+        JsonObject.Builder item = JsonObject.builder()
+                .put("docItemLineNo", number(lineNumber))
+                .put("docItemSku", line.sku())
+                .put("docItemSenderCode", line.senderCode())
+                .put("docItemReceiverCode", line.receiverCode())
+                .put("docItemDesc", line.description())
+                .put("docItemMUnit", line.unit())
+                .put("docItemQty", number(line.quantity()))
+                .put("docItemUnitOriginalPriceWoVat", number(line.unitPrice()))
+                .put("docItemUnitDiscountAmount", number(line.unitDiscount()))
+                .put("docItemUnitPriceWoVat", number(line.unitPriceAfterDiscount()))
+                .put("docItemUnitVat", number(line.unitVat()))
+                .put("docItemVat", number(line.vatGroup().percent()))
+                .put("docItemVatGroup", line.vatGroup().code())
+                .put("docItemTotalOriginalPriceWoVat", number(line.totalBeforeDiscount()))
+                .put("docItemTotalPriceWoVat", number(line.total()))
+                .put("docItemTotalVat", number(line.totalVat()))
+                .put("docItemTotalPriceWVat", number(line.totalWithVat()))
+                .put("docItemTaxIndicator", line.taxIndicator().code())
+                .put("docItemDomesticProduct", Boolean.TRUE.equals(line.domesticProduct()) ? "MP" : null);
+        if (line.basePrice() != null) {
+            item.put("docItemBasePriceWoVat", number(line.basePrice().base()))
+                    .put("docItemBasePriceWoVatAdd", number(line.basePrice().add()))
+                    .put("docItemBasePriceWoVatDeduct", number(line.basePrice().deduct()))
+                    .put("docItemBasePriceType", line.basePrice().type());
         }
+        if (document.kind().allowsAttributes()) {
+            item.put("attributes", array(line.attributes(), this::attribute));
+        }
+        return item.build();
+    }
+
+    @ProvisionalSpec("The advance block and the increase and decrease are in every example but only in some "
+            + "tables (UJP08-06 to UJP08-09 are on the 100 table alone); written for every kind, as the examples do")
+    private JsonObject totals(DocumentTotals totals, Advance advance) {
+        return JsonObject.builder()
+                .put("docNetAmount", number(totals.net()))
+                .put("docDiscountAmount", number(totals.discount()))
+                .put("docNetAmountDisc", number(totals.netAfterDiscount()))
+                .put("docVatAmount", number(totals.vat()))
+                .put("docGrossAmount", number(totals.gross()))
+                .put("docGrossAmountR", number(totals.grossRounded()))
+                .put("docAvansDate", advance == null ? null : date(advance.date()))
+                .put("docAvansDesc", advance == null ? null : advance.description())
+                .put("docAvansAmount", number(totals.advanceAmount()))
+                .put("docAmountIncrease", number(totals.increase()))
+                .put("docAmountDecrease", number(totals.decrease()))
+                .put("docFinalAmount", number(totals.finalAmount()))
+                .build();
+    }
+
+    @ProvisionalSpec("An absent note is null, as the 110, 130 and 310 examples write it; the 100 examples write "
+            + "an empty string")
+    private JsonObject vatTotal(VatTotal total) {
+        return JsonObject.builder()
+                .put("vatTaxIndicator", total.indicator().code())
+                .put("vatTaxIndicatorNote", total.indicator().note())
+                .put("vatCode", total.group().code())
+                .put("vatPercent", number(total.group().percent()))
+                .put("vatTaxableAmount", number(total.taxable()))
+                .put("vatAmount", number(total.vat()))
+                .put("vatTotalAmount", number(total.total()))
+                .build();
+    }
+
+    private JsonObject attribute(Attribute attribute) {
+        return JsonObject.builder()
+                .put("name", attribute.name())
+                .put("value", attribute.value())
+                .put("type", attribute.type().name())
+                .build();
+    }
+
+    private static int storno(Mode mode) {
+        return switch (mode) {
+            case Mode.Ordinary _ -> 0;
+            case Mode.Storno _ -> 1;
+            case Mode.Correction _ -> 2;
+        };
+    }
+
+    private static <T> JsonArray array(List<T> items, Function<T, JsonObject> element) {
+        return JsonArray.of(items.stream().map(element).toList());
+    }
+
+    private static String date(LocalDate date) {
+        return date == null ? null : date.toString();
+    }
+
+    private static JsonValue number(int value) {
+        return new JsonNumber(BigDecimal.valueOf(value));
+    }
+
+    /** A number without trailing zeros, so 100.0000 is written 100 and 4.7619 stays 4.7619. */
+    private static JsonValue number(BigDecimal value) {
+        return new JsonNumber(value.stripTrailingZeros());
     }
 }

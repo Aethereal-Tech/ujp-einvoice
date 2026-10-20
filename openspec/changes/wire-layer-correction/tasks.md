@@ -36,32 +36,32 @@
 
 ## 4. Money
 
-- [ ] 4.1 `internal.Money`: one `HALF_UP`, line values at scale 4 unrounded, VAT and document totals summed unrounded
+- [x] 4.1 `internal.Money`: one `HALF_UP`, line values at scale 4 unrounded, VAT and document totals summed unrounded
   then rounded to 2, and the integer fields rounded to whole numbers. Replace `invoice-model`'s "round the net first"
   requirement.
-- [ ] 4.2 Add a property test: totals computed from unrounded lines differ from totals of rounded lines in the cases
+- [x] 4.2 Add a property test: totals computed from unrounded lines differ from totals of rounded lines in the cases
   the guide describes, and the library always produces the former.
 
 ## 5. Model (decision 2)
 
-- [ ] 5.1 Amend `library-architecture`: `model` follows UJP's document concepts, with no wire names and no JSON types.
-- [ ] 5.2 Document, header, typed references (with the 11 reference types added 15.10), seller, buyer, payment, lines
+- [x] 5.1 Amend `library-architecture`: `model` follows UJP's document concepts, with no wire names and no JSON types.
+- [x] 5.2 Document, header, typed references (with the 11 reference types added 15.10), seller, buyer, payment, lines
   with attributes and per-line discount, document totals including `docAmountIncrease`/`docAmountDecrease` and the
   final-amount formula, and VAT totals by group and by indicator.
-- [ ] 5.3 `VatGroup`, and `TaxIndicator` with the dated `TaxIndicators` snapshot (decision 4).
-- [ ] 5.4 `DocumentKind` table for 100, 110, 120, 130 and 310 from the type pages, with mandatory fields refused
+- [x] 5.3 `VatGroup`, and `TaxIndicator` with the dated `TaxIndicators` snapshot (decision 4).
+- [x] 5.4 `DocumentKind` table for 100, 110, 120, 130 and 310 from the type pages, with mandatory fields refused
   by name.
-- [ ] 5.5 `Storno` and `Correction` as the `docStorno` axis (decision 5). Negative amounts are allowed only on a
+- [x] 5.5 `Storno` and `Correction` as the `docStorno` axis (decision 5). Negative amounts are allowed only on a
   storno.
-- [ ] 5.6 `product-boundaries`: the natural-person address cut stands, since 170 is not in 1.0; record that 170
+- [x] 5.6 `product-boundaries`: the natural-person address cut stands, since 170 is not in 1.0; record that 170
   re-opens it. The credit-note sign rule stands.
 
 ## 6. Serializer
 
-- [ ] 6.1 The envelope, and `document` with `voidReason`/`correctionReason` as siblings.
-- [ ] 6.2 `null` and `[]` for absent fields. Emit no undocumented member. `docAlt` and the currency block follow
+- [x] 6.1 The envelope, and `document` with `voidReason`/`correctionReason` as siblings.
+- [x] 6.2 `null` and `[]` for absent fields. Emit no undocumented member. `docAlt` and the currency block follow
   decision 6.
-- [ ] 6.3 Goldens from the 08.10 examples: 100, 100 storno, 100 correction, 110, 120, 130 and 310. Recompute every
+- [x] 6.3 Goldens from the 08.10 examples: 100, 100 storno, 100 correction, 110, 120, 130 and 310. Recompute every
   total from the model, and keep `scripts/verify-jws.py` as the independent check.
 
 ## 7. Signing

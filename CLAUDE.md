@@ -30,15 +30,16 @@ obtained, so citing it is possible: cite the section, update the field/endpoint,
 
 Three layers, kept genuinely independent:
 
-1. **`model`** — the `Invoice` domain model. Serialization-agnostic: it does not know JSON exists.
-2. **`serialization`** — `Serializer` interface + `UjpJsonSerializer`, the one shipped implementation
-   of the reconstructed wire shape. A corrected schema, or an entirely different format (UBL 2.1,
-   say), is a new `Serializer` implementation, not a change to `model`.
+1. **`model`** — the UJP sales document: `Document` and the types of its type pages, in UJP's own concepts. It names
+   no wire field and knows no JSON; the UJP code of a field appears only in a refusal message, as a citation.
+2. **`serialization`** — `Serializer` interface + `UjpJsonSerializer`, the one shipped implementation, which writes
+   UJP's JSON. An entirely different format (UBL 2.1, say) is a new `Serializer` implementation, not a change to
+   `model`.
 3. **`signing`** / **`transport`** — JWS signing and the HTTP client. Both depend on `Serializer` and
    `Signer` as interfaces, never on `UjpJsonSerializer` or `JwsRs256Signer` directly.
 
-If a change to fix the wire format touches `model`, that is a sign the abstraction leaked — stop and
-reconsider before proceeding.
+A field, a kind or a rule UJP's type page states goes in `model`, with its UJP code cited. A wire name or a JSON type
+in `model` is the leak to stop and reconsider.
 
 ## Conventions
 
@@ -47,8 +48,9 @@ reconsider before proceeding.
 - **Zero runtime dependencies.** See the comment above `<dependencies>` in `pom.xml` before adding
   one — the bar is "this is genuinely more than a few hundred lines of well-scoped JDK code", not
   "a library would be more convenient."
-- **Money math**: `BigDecimal`, `RoundingMode.HALF_UP`, two decimal places, via
-  `internal.Money.round`. Never introduce a second rounding convention.
+- **Money math**: `BigDecimal` and `RoundingMode.HALF_UP` everywhere, via `internal.Money`, at the scale each layer
+  carries: line values unrounded up to 4 decimals, VAT and document totals summed unrounded and rounded to 2, and the
+  whole-number fields to 0 — as UJP's /json-struktura states. Never a second rounding mode.
 - **Comments explain why, not what.** Don't narrate code that already reads clearly; do explain a
   non-obvious constraint, a rejected alternative, or a subtlety a future reader would otherwise have
   to re-derive.
