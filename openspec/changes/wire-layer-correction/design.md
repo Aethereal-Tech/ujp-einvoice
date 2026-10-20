@@ -236,7 +236,11 @@ Still open:
 1. The CLAUDE.md money rule's new wording is approved (owner, 2026-10-20); it lands with the money code.
 2. `swagger.json`: the owner asked the maintainer to fetch it (2026-10-20), as one GET of the published API
    description, with no authentication.
-3. For UJP, should the owner choose to ask: the `ЗШ*` asterisk, `docAlt`'s type, the error body shape and the
+3. **The document has no published schema.** The 2026-10-20 API description covers `einvoice_api` only
+   (`specification-status/openapi-2026-10-20.md`). Gate 2 can therefore validate transport and status, but not
+   `document`. Before the merge, the owner chooses: publish 1.0 with the document's optionality markers still
+   provisional and cited to the type pages, or ask UJP for the JSON Receiver's schema first.
+4. For UJP, should the owner choose to ask: the `ЗШ*` asterisk, `docAlt`'s type, the error body shape and the
    production base URL.
-4. **Order of work.** The library comes first: Invicta's advance and partial invoices were parked again
+5. **Order of work.** The library comes first: Invicta's advance and partial invoices were parked again
    (owner, 2026-10-20). Kind 130 stays in 1.0, so Invicta's advance invoice will later be shaped to map onto it.

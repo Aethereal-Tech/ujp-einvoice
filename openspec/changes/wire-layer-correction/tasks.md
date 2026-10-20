@@ -6,9 +6,10 @@
   RoundingMode.HALF_UP everywhere, via internal.Money, at the scale each layer carries: line values unrounded up to 4
   decimals, VAT and document totals summed unrounded and rounded to 2, and the whole-number fields to 0 — as UJP's
   /json-struktura states. Never a second rounding mode."
-- [ ] 0.4 Fetch `swagger.json` from the Swagger UI on the API host. The owner asked the maintainer to fetch it
-  (2026-10-20): a plain GET of the published API description, with no authentication and no call to any service.
-  Blocks 9.
+- [x] 0.4 Fetch the gateway's API description (2026-10-20, `specification-status/openapi-2026-10-20.md`). It covers
+  `einvoice_api` only: the error body, status and catalogues. The JSON Receiver, which takes the document, has
+  none published, so 9 validates the transport side against it, and the document shape stays sourced from the type
+  pages.
 - [ ] 0.5 Obtain a qualified certificate, register it at `eujptest.ujp.gov.mk/ureg`, and get the privileges granted.
   Blocks 10 only.
 
@@ -79,8 +80,8 @@
 
 ## 9. Schema gate (needs 0.4)
 
-- [ ] 9.1 Commit the JSON Schema under `src/test/resources`, and validate every golden against it with a test-scoped
-  validator.
+- [ ] 9.1 Commit the `einvoice_api` OpenAPI under `src/test/resources`, and validate every status, catalogue and
+  error body the client parses against it with a test-scoped validator.
 - [ ] 9.2 Settle `docAlt`'s type, null versus omit, `docGrossAmountR`'s rounding and the undocumented members. Remove
   each remaining marker the schema confirms, with a citation.
 - [ ] 9.3 Re-run the comparison against `/известувања` and record anything newer in a dated comparison file.
