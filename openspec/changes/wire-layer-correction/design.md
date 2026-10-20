@@ -240,7 +240,7 @@ Still open:
    (`specification-status/openapi-2026-10-20.md`). Gate 2 can therefore validate transport and status, but not
    `document`. Before the merge, the owner chooses: publish 1.0 with the document's optionality markers still
    provisional and cited to the type pages, or ask UJP for the JSON Receiver's schema first.
-4. For UJP, should the owner choose to ask: the `ЗШ*` asterisk, `docAlt`'s type, the JSON Receiver's schema and error body, and the
-   production base URL.
+4. For UJP, should the owner choose to ask: the `ЗШ*` asterisk, `docAlt`'s type, the JSON Receiver's schema and
+   error body, and the production base URL.
 5. **Order of work.** The library comes first: Invicta's advance and partial invoices were parked again
    (owner, 2026-10-20). Kind 130 stays in 1.0, so Invicta's advance invoice will later be shaped to map onto it.
