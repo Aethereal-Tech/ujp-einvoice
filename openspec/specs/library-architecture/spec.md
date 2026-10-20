@@ -9,14 +9,20 @@ across all of them.
 
 ## Requirements
 
-### Requirement: model depends on nothing and does not know JSON exists
-The `model` package SHALL hold `Invoice`, `Party`, `Address`, `LineItem`, `VatCategory`, `Totals`, `CategoryTotal`,
-`DocumentType`, `DocumentReference` and `InvoiceValidationException`, and SHALL depend on nothing else in the
-library.
+### Requirement: model follows UJP's document, names no wire field and knows no JSON
+The `model` package SHALL hold `Document` and the types of UJP's document — `DocumentKind`, `Header`, `Mode`, `Reference`,
+`Party`, `Address`, `Country`, `Subsidiary`, `Payment`, `Line`, `BasePrice`, `VatGroup`, `VatImpact`, `TaxIndicator`,
+`TaxIndicators`, `DocumentTotals`, `VatTotal`, `Advance`, `Adjustments`, `Attribute` and the code-plus-name values — and
+`DocumentValidationException`. It SHALL be written in domain names, SHALL NOT contain a wire name such as
+`docItemUnitOriginalPriceWoVat` or a JSON type, and SHALL depend on nothing else in the library except `internal.Money`.
+
+UJP's JSON is the only format this library writes (UBL 2.1 and XAdES were rejected on first-hand evidence), so a
+model that follows UJP's concepts protects nothing by being abstract. The UJP code of a field appears in a refusal
+message as a citation of the type page, and is not a wire name.
 
 #### Scenario: model has no serialization dependency
 - **WHEN** the `model` package is inspected
-- **THEN** it depends on nothing else in the library and does not know JSON exists
+- **THEN** it holds no wire field name and no JSON type, and depends on nothing else in the library but `internal.Money`
 
 ### Requirement: serialization depends on model only
 The `serialization` package SHALL hold the `Serializer` interface and `UjpJsonSerializer`, and SHALL depend on
@@ -53,16 +59,21 @@ reader/writer), and SHALL depend on nothing else in the library.
 - **WHEN** the `internal` package is inspected
 - **THEN** it depends on nothing else in the library
 
-### Requirement: a corrected wire format is a new Serializer implementation, never a change to model
-A corrected schema, or an entirely different format (UBL 2.1, say), SHALL be implemented as a new `Serializer`
-implementation, never as a change to `model`.
+### Requirement: an entirely different wire format is a new Serializer implementation
+An entirely different format (UBL 2.1, say) SHALL be implemented as a new `Serializer` implementation. A correction of
+the UJP JSON that follows from a corrected schema is a change to `UjpJsonSerializer`; a change to what UJP's document
+*is* — a field, a kind, a rule — is a change to `model`, with the type page cited.
 
-A change to fix the wire format that has to touch `model` is a sign the abstraction leaked — stop and reconsider
-before proceeding.
+This replaces the rule that a wire fix touching `model` meant the abstraction had leaked. It had: the abstraction
+protected a second format that was rejected, at the cost of a model that could not hold UJP's own concepts.
 
-#### Scenario: A wire-format correction touches model
-- **WHEN** a change intended to fix the wire format needs to touch `model`
-- **THEN** that is a sign the abstraction leaked, and the change should stop and reconsider before proceeding
+#### Scenario: UBL 2.1 is wanted
+- **WHEN** a second wire format is wanted
+- **THEN** it is a new `Serializer` implementation over the same `Document`
+
+#### Scenario: A type page adds a field
+- **WHEN** a type page adds a field to a kind
+- **THEN** the field is added to `model` with its UJP code cited, and written by `UjpJsonSerializer`
 
 ### Requirement: the library ships with zero runtime dependencies, compiled with --release 25
 `net.aetherealtech:ujp-einvoice` SHALL ship with zero runtime dependencies, compiled with `--release 25`.

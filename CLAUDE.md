@@ -30,15 +30,16 @@ obtained, so citing it is possible: cite the section, update the field/endpoint,
 
 Three layers, kept genuinely independent:
 
-1. **`model`** — the `Invoice` domain model. Serialization-agnostic: it does not know JSON exists.
-2. **`serialization`** — `Serializer` interface + `UjpJsonSerializer`, the one shipped implementation
-   of the reconstructed wire shape. A corrected schema, or an entirely different format (UBL 2.1,
-   say), is a new `Serializer` implementation, not a change to `model`.
+1. **`model`** — the UJP sales document: `Document` and the types of its type pages, in UJP's own concepts. It names
+   no wire field and knows no JSON; the UJP code of a field appears only in a refusal message, as a citation.
+2. **`serialization`** — `Serializer` interface + `UjpJsonSerializer`, the one shipped implementation, which writes
+   UJP's JSON. An entirely different format (UBL 2.1, say) is a new `Serializer` implementation, not a change to
+   `model`.
 3. **`signing`** / **`transport`** — JWS signing and the HTTP client. Both depend on `Serializer` and
    `Signer` as interfaces, never on `UjpJsonSerializer` or `JwsRs256Signer` directly.
 
-If a change to fix the wire format touches `model`, that is a sign the abstraction leaked — stop and
-reconsider before proceeding.
+A field, a kind or a rule UJP's type page states goes in `model`, with its UJP code cited. A wire name or a JSON type
+in `model` is the leak to stop and reconsider.
 
 ## Conventions
 

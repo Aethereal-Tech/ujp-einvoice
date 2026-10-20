@@ -1,223 +1,229 @@
-# Invoice model
+# Document model
 
 ## Purpose
 
-The `model` package is the serialization-agnostic invoice domain — `Invoice`, `Party`, `Address`, `LineItem`,
-`VatCategory`, `Totals`, `CategoryTotal`, `DocumentType` and `DocumentReference`. Every rule here is enforced by a
-constructor, never left to a serializer or a caller to notice, and `InvoiceValidationException` is how each is
-refused.
+The `model` package is the domain of a UJP sales document: `Document`, built per `DocumentKind`, with its `Header`,
+`Mode`, `Reference`s, `Party`s, `Payment`, `Line`s, `Advance`, `Adjustments` and `Attribute`s, and the figures the model
+derives from them — `DocumentTotals` and `VatTotal`. It follows UJP's own concepts (the type pages of 100, 110, 120, 130
+and 310, as of 2026-10-14/16), and names no wire field and knows no JSON. Every rule here is enforced by a constructor,
+never left to a serializer or a caller to notice, and `DocumentValidationException` is how each is refused, naming the
+field and citing its UJP code. It replaces 0.2.0's `Invoice`, `LineItem`, `Totals`, `CategoryTotal`, `VatCategory`,
+`DocumentType` and `DocumentReference`, which went in the same change.
 
 ## Requirements
 
-### Requirement: Invoice requires an invoice number, issue date, currency, seller, buyer, line items and reconciling totals
-`Invoice`'s canonical constructor — `Invoice(String invoiceNumber, LocalDate issueDate, LocalDate dueDate, Currency
-currency, Party seller, Party buyer, List<LineItem> lineItems, Totals totals, DocumentType documentType,
-DocumentReference correctedInvoice)` — SHALL require a non-blank `invoiceNumber`, a non-null `issueDate`, a
-`currency`, a `seller`, a `buyer`, at least one line item (defensively copied), and `totals` that reconcile with
-those line items. An 8-argument constructor omits `documentType` and `correctedInvoice`, meaning `INVOICE` with no
-reference. `Invoice.builder()` accumulates line items and computes `Totals` on `build()`.
+### Requirement: a Document is built for one kind, from facts the caller gives, and derives every figure it carries
+`Document(DocumentKind kind, Header header, Mode mode, List<Reference> references, Party seller, Party buyer, Payment
+payment, List<Line> lines, Advance advance, Adjustments adjustments, List<Attribute> attributes)` is built through
+`Document.builder(kind)`. Its totals (`totals()`) and its per-indicator VAT totals (`vatTotals()`) SHALL be derived from
+the lines on every call and SHALL NOT be accepted from the caller, nor any figure a line derives.
 
-#### Scenario: A blank invoice number is refused
-- **WHEN** an `Invoice` is built with a blank `invoiceNumber`
+#### Scenario: A document's totals follow its lines
+- **WHEN** a document of two lines of 100 at 18% is built
+- **THEN** `totals()` reads net 200, VAT 36, gross 236 and a final amount of 236, with nothing supplied by the caller
+
+### Requirement: a missing or wrong field is refused by name, with the UJP code of the field
+Every refusal SHALL be a `DocumentValidationException` whose message names the field and starts with its UJP code
+(`UJP01-06 turnoverDate is required on a 100`). The code is a citation of the type page and not a wire name.
+
+#### Scenario: A missing turnover date is refused on an invoice
+- **WHEN** a `DocumentKind.INVOICE` is built without a turnover date
+- **THEN** it is refused with `UJP01-06 turnoverDate is required on a 100`
+
+### Requirement: DocumentKind holds the code and the rules of each shipped kind
+`DocumentKind` SHALL be `INVOICE` 100, `CREDIT_NOTE` 110, `DEBIT_NOTE` 120, `ADVANCE_INVOICE` 130 and `CASH_TURNOVER`
+310, each with `code()` and `ujpName()`, and its rules read from the type pages:
+
+| Rule | 100 | 110 | 120 | 130 | 310 |
+|---|---|---|---|---|---|
+| turnover date required (UJP01-06) | yes | no | no | no | yes |
+| payment group allowed (UJP10) | yes | no | no | yes | yes |
+| payment type required (UJP10-01) | no | — | — | yes | yes |
+| advance deduction allowed (UJP08-06/-08) | yes | no | no | no | no |
+| attributes allowed (UJP07-26, UJP12-01) | yes | no | no | no | no |
+| currency date and rate listed (UJP10-10/-11) | no | — | — | yes | yes |
+| unit required (UJP07-07) | no | no | no | yes | yes |
+| `docId` length (UJP01-11) | 30 | 30 | 30 | 30 | 12 |
+
+Party names, street, street number and subsidiary name are also shorter on 310 (80, 60, 10, 100 against 150, 80, 20,
+150). A kind beyond this set is a new constant and not a new type; none ships with rules.
+
+#### Scenario: A note refuses a payment
+- **WHEN** a payment is given to a credit note or a debit note
+- **THEN** it is refused with `UJP10 payment is not on the page of a 110`
+
+#### Scenario: A 130 and a 310 require a payment type
+- **WHEN** a payment without a type, or none, is given to an advance invoice or a cash turnover
+- **THEN** it is refused with `UJP10-01 payment.type is required on a 130` (or 310)
+
+#### Scenario: A cash turnover has a shorter id
+- **WHEN** a 310 has a 13-character id
+- **THEN** it is refused with `UJP01-11 id is at most 12 characters on a 310`
+
+### Requirement: the references of a note are reported as mandatory and not enforced
+`DocumentKind.requiresReferences()` SHALL be true for 110 and 120, where UJP02-01 is marked mandatory, and the model
+SHALL NOT refuse an empty list on them: the 110 and 120 examples send `[]`, and the page's own note makes the four
+sub-fields conditional on a reference being used. The accessor is `@ProvisionalSpec` and reports the marker for a caller
+that wants to enforce it. A reference needs all four parts once it is used.
+
+#### Scenario: A credit note without references is accepted
+- **WHEN** a credit note is built with no reference
+- **THEN** it is accepted, as the 110 example is
+
+### Requirement: Mode is the docStorno axis, independent of the kind
+`Mode` SHALL be a sealed interface of `Ordinary`, `Storno(VoidReason reason, String comment)` and
+`Correction(CorrectionReason reason, String comment)`. A storno and a correction SHALL carry exactly one reference of
+type `ST` naming the original, and an ordinary document SHALL carry none. A reason whose code list entry is "Друго"
+(`S-5`, `C08`) requires a comment (`@ProvisionalSpec`: the list asks for free text). `VoidReason`, `CorrectionReason`,
+`RefDocumentType` and `PaymentType` are code-plus-name values: the gateway serves the lists, so any pair is accepted and
+the known ones are constants (the reference types as of 16.10, including the eleven added on 15.10). `docStorno` has no
+row on the 110, 120 and 130 pages, so `Mode` is `@ProvisionalSpec` there and the model does not refuse a storno on them.
+
+#### Scenario: A storno without its original is refused
+- **WHEN** a storno is built without a reference of type `ST`
+- **THEN** it is refused with `UJP02-01-01 references needs exactly one reference of type ST naming the original, to be stornoed`
+
+#### Scenario: An ordinary document names no original
+- **WHEN** an ordinary document is built with a reference of type `ST`
 - **THEN** it is refused
 
-#### Scenario: The 8-argument constructor means INVOICE with no reference
-- **WHEN** `Invoice` is built through the 8-argument constructor
-- **THEN** `documentType` is `INVOICE` and `correctedInvoice` is absent
+### Requirement: a storno negates every quantity itself, and nothing else is negative
+The caller SHALL describe the original's lines with positive quantities; `Document.lines()` returns them as given and
+`Document.effectiveLines()` returns them with every quantity negated on a storno, so a caller cannot negate one line
+and forget another. Unit prices and unit VAT stay positive and every total follows the sign. A line stated with a
+negative quantity SHALL be refused. This is the only place a negative amount exists; a credit or debit note carries
+positive amounts, the kind carrying the direction.
 
-### Requirement: dueDate is optional and must not precede issueDate
-`dueDate` SHALL be optional; when present it SHALL NOT precede `issueDate`, and when absent it SHALL be omitted
-from the wire.
+#### Scenario: A storno of one line
+- **WHEN** a storno is built from a line of 1 at 95.2381 in group DDV-B
+- **THEN** its effective line has quantity -1, unit VAT 4.7619, total VAT -4.7619 and total with VAT -100, and its
+  document gross is -100
 
-#### Scenario: A due date before the issue date is refused
-- **WHEN** an `Invoice`'s `dueDate` precedes its `issueDate`
-- **THEN** it is refused
+#### Scenario: A negative quantity is refused
+- **WHEN** a line with a negative quantity is given to any document
+- **THEN** it is refused with `UJP07-08 lines[n].quantity must be positive: …`
 
-#### Scenario: An absent due date is omitted from the wire
-- **WHEN** an `Invoice`'s `dueDate` is absent
-- **THEN** it is omitted from the serialized invoice
+### Requirement: the header needs a number, an id and a date, and the kind decides the rest
+`Header(number, id, date, turnoverDate, deliveryDate, delivery, periodStart, periodEnd, notes, headerText, footerText,
+indicator, alternativeMode)` SHALL require `number` (UJP01-09), `id` (UJP01-11) and `date` (UJP01-03); a period SHALL
+NOT end before it starts. `DocIndicator` holds the six published values and the kinds each is valid on: `KONECNA` and
+`KOMISIONA` on 100, and `PN`, `PI`, `TUR`, `DOBRA` on none of the shipped kinds. `alternativeMode` is a boolean in the
+model whatever `docAlt` is on the wire.
 
-### Requirement: currency is a java.util.Currency, and the builder also accepts an ISO code string
-`currency` SHALL be a `java.util.Currency`; `Invoice.builder()` SHALL also accept an ISO currency code string for
-it.
+#### Scenario: An indicator the kind does not list is refused
+- **WHEN** a credit note carries `KONECNA`
+- **THEN** it is refused with `UJP01-15 indicator is not valid on a 110: KONECNA`
 
-#### Scenario: The builder accepts an ISO currency code string
-- **WHEN** `Invoice.builder().currency(...)` is given an ISO currency code string such as `"MKD"`
-- **THEN** it resolves to the corresponding `java.util.Currency`
+### Requirement: a seller is an identified business, and a buyer is a business or a non-resident
+Both parties SHALL have a name and a complete `Address` (street, number, postal code and city, each mandatory). The
+seller SHALL have a `tin`. The buyer SHALL have a `tin`, or a `foreignTin` and a country other than `MK`. A natural
+person (`Party.naturalPerson`) SHALL be refused as a buyer on every shipped kind, because kind 170 is not in 1.0. The
+ЕДБ is required and not format-checked. `Country` defaults to MK, Северна Македонија, in Latin letters as the examples
+write it. A `Subsidiary` (code, name, address) needs at least one part.
 
-### Requirement: a seller is always a complete business, and a missing part is refused by name
-`Invoice.seller` SHALL always be a complete business — name, ЕДБ, street, postal code, city and country — and a
-missing part SHALL be refused by name. Only `Party.company` may fill the seller role.
-
-#### Scenario: A seller missing its postal code is refused by field name
-- **WHEN** an `Invoice`'s seller has no address postal code
-- **THEN** it is refused with `Invoice.seller.address.postalCode must be present: …`
-
-### Requirement: a buyer is a business or a natural person
-`Invoice.buyer` SHALL accept either a business (`Party.company`) or a natural person
-(`Party.naturalPerson`).
-
-#### Scenario: A natural-person buyer is accepted
-- **WHEN** an `Invoice`'s buyer is built with `Party.naturalPerson`
-- **THEN** it is accepted
-
-### Requirement: correctedInvoice is required exactly when the document type corrects another
-`correctedInvoice` SHALL be required when `documentType.corrects()` is true, and SHALL be refused when it is not.
-
-#### Scenario: A credit note without a corrected-invoice reference is refused
-- **WHEN** an `Invoice` has `documentType = CREDIT_NOTE` and no `correctedInvoice`
-- **THEN** it is refused
-
-#### Scenario: An ordinary invoice with a corrected-invoice reference is refused
-- **WHEN** an `Invoice` has `documentType = INVOICE` and a `correctedInvoice`
-- **THEN** it is refused
-
-### Requirement: Party is a company or a natural person
-`Party` is `record Party(String name, String taxId, Address address)`. `Party.company(String name, String taxId,
-Address address)` builds a business — name, ЕДБ and a complete address, the first missing part refused by field
-name. `Party.naturalPerson(String name)` and `Party.naturalPerson(String name, Address address)` build a private
-individual, known by name alone or with whatever address is on record. `Party.isNaturalPerson()` SHALL be true
-exactly when there is no tax id. `name` is one string either way — a registered organization name, or a person's
-name composed however the consumer composes it.
-
-#### Scenario: A company missing its tax id is refused by field name
-- **WHEN** `Party.company` is built with no `taxId`
-- **THEN** it is refused, naming the missing field
-
-#### Scenario: isNaturalPerson is true exactly when there is no tax id
-- **WHEN** a `Party` has no `taxId`
-- **THEN** `Party.isNaturalPerson()` is true
-
-### Requirement: a natural-person buyer needs only a name; tax id, address, and every address part are optional
-For a natural-person buyer, the tax id SHALL be absent, street, postal code and city SHALL all be optional, an
-absent country SHALL read as `MK`, and a `name` string SHALL be the only requirement.
-
-The library does not demand a city, or any address at all, from a private individual — refusing one would refuse
-invoices that are perfectly legal, ahead of a specification nobody has read.
-
-#### Scenario: A natural person with only a name is accepted
-- **WHEN** `Party.naturalPerson(String name)` is built with no address at all
-- **THEN** it is accepted
-
-#### Scenario: A natural person's absent country reads as MK
-- **WHEN** a natural person's address has no `country`
-- **THEN** it reads as `MK`
-
-### Requirement: taxId is the ЕДБ, required on a business and not format-checked
-`taxId` SHALL be the ЕДБ: required on a business, and not format-checked.
-
-A 13-digit rule would reject legitimate cross-border counterparties and fixture cases this library cannot confirm.
+#### Scenario: A natural-person buyer is refused
+- **WHEN** a document is built with `Party.naturalPerson` as its buyer
+- **THEN** it is refused with `UJP05-03 buyer.tin is required: a natural-person buyer is kind 170, which this library does not ship`
 
 #### Scenario: A tax id that is not 13 digits is accepted
-- **WHEN** a business `Party`'s `taxId` does not have 13 digits
+- **WHEN** a business party's `tin` does not have 13 digits
 - **THEN** it is accepted, because the format is deliberately not checked
 
-### Requirement: Address fields are all nullable, and country defaults to MK
-`Address` is `record Address(String street, String city, String postalCode, String country)`. Every field SHALL be
-nullable, and `country` SHALL default to `Address.DEFAULT_COUNTRY` (`"MK"`) when absent.
+### Requirement: a Line takes quantity, price, discount and tax, and derives every other figure
+`Line` SHALL take `sku`, `senderCode`, `receiverCode`, `description`, `unit`, `quantity`, `unitPrice`, `unitDiscount`,
+`vatGroup`, `taxIndicator`, `domesticProduct`, `basePrice` and `attributes`. `quantity`, `unitPrice` and `unitDiscount`
+SHALL have at most four decimals and are refused beyond that rather than rounded; the unit price and the discount
+SHALL NOT be negative and the discount SHALL NOT exceed the price. The line number is the position, from 1. Derived,
+at four decimals, `HALF_UP`: `unitPriceAfterDiscount = unitPrice - unitDiscount`; `unitVat = unitPriceAfterDiscount ×
+rate`, the group's rate when the indicator's impact is `STANDARD` and 0 otherwise; `totalBeforeDiscount = quantity ×
+unitPrice`; `total = quantity × unitPriceAfterDiscount`; `totalVat = quantity × unitVat`; `totalWithVat = total +
+totalVat`. These are the formulas of the gateway's API description. `unit` is free text and never a code from a list;
+it is required on 130 and 310 only.
 
-#### Scenario: An address with no country defaults to MK
-- **WHEN** an `Address` is built with no `country`
-- **THEN** it defaults to `Address.DEFAULT_COUNTRY` (`"MK"`)
+#### Scenario: A line is derived to four decimals
+- **WHEN** a line of 1 at 254.24 in group DDV-A is built
+- **THEN** its unit VAT is 45.7632 and its total with VAT is 300.0032
 
-### Requirement: an absent Address field is null and omitted; a blank one is refused
-A `null` Address field SHALL be an absent field, omitted from the wire; a blank string SHALL be refused.
+#### Scenario: A fifth decimal is refused
+- **WHEN** a line has a unit price of 0.00001
+- **THEN** it is refused with `UJP07-09 unitPrice has at most 4 decimals; the model refuses rather than rounds`
 
-Absent is not blank: a blank string is a missing value pretending to be present, and would force the serializer to
-choose between writing `""` and silently dropping it.
+### Requirement: a BasePrice must add up to the unit price
+`BasePrice(base, add, deduct, type)` SHALL satisfy `base + add - deduct = unitPrice`, an absent `add` or `deduct`
+counting as 0, or the line is refused. UJP07-24 (`deduct`) is not on the 100 table but is named by the 14.09 changelog;
+it is written for every kind.
 
-#### Scenario: A blank street is refused
-- **WHEN** an `Address.street` is set to a blank string
-- **THEN** it is refused with `Address.street must not be blank; omit it instead`
+#### Scenario: A base price that does not add up is refused
+- **WHEN** a line's base 80 plus 30 minus 10 is not its unit price
+- **THEN** it is refused with `UJP07-22 basePrice base + add - deduct must equal the unit price …`
 
-#### Scenario: A null street is omitted from the wire
-- **WHEN** an `Address.street` is `null`
-- **THEN** it is omitted from the serialized address
+### Requirement: VatGroup is the four rate groups, and the tax indicator is a value with a dated catalogue
+`VatGroup` SHALL be `DDV_A` 18, `DDV_V` 10, `DDV_B` 5 and `DDV_G` 0. `TaxIndicator(code, vatImpact, group, note)` SHALL
+carry the impact (`STANDARD`, `NULA`, `OSLOBODEN`, `PRENESEN`, and `MARGINALNA` from the gateway's `TaxIndicatorDto`),
+the rate group the catalogue pairs it with (`null` when it offers several) and a note, which is required unless the
+impact is `STANDARD`. A line's group SHALL agree with its indicator's. `TaxIndicators.SNAPSHOT_2026_10_16` SHALL hold
+the 90 sales indicators of `/danocni-indikatori`, retrieved 2026-10-19, looked up by code; an indicator outside it is
+constructed by stating its impact. The calculation is driven by the impact and not by the code. A margin-scheme
+(`MARGINALNA`) indicator is refused on a line, because no obtained document says how the gateway computes it.
 
-### Requirement: LineItem requires a non-blank description, a strictly positive quantity, a non-negative unit price and a VAT category
-`LineItem` is `record LineItem(String description, BigDecimal quantity, BigDecimal unitPrice, VatCategory
-vatCategory, String unit)`, plus a 4-argument constructor for a line that states no unit. `description` SHALL be
-non-blank, `quantity` SHALL be strictly positive, `unitPrice` SHALL be non-negative (zero allowed), and
-`vatCategory` SHALL be non-null.
+The page carries no impact column, so every entry's impact except `DDV-A`, `DDV-V`, `DDV-B` and `DDV-G` (which the
+gateway's own examples settle) is the library's reading of its name, and the snapshot is `@ProvisionalSpec`. The page
+prints `DDV-10-14-4-6` twice; the second row is stored as `DDV-10-14-6`, the code the 02.10 changelog names. Four codes
+contain a Cyrillic letter and are stored exactly so.
 
-#### Scenario: A zero or negative quantity is refused
-- **WHEN** a `LineItem`'s `quantity` is zero or negative
-- **THEN** it is refused
+#### Scenario: An exempt line carries no VAT
+- **WHEN** a line of 1111 carries the exempt indicator `DDV-9-1` in group `DDV-G`
+- **THEN** its VAT is 0 and its total with VAT is 1111
 
-#### Scenario: A zero unit price is accepted
-- **WHEN** a `LineItem`'s `unitPrice` is zero
-- **THEN** it is accepted
+#### Scenario: An unknown indicator is refused by name
+- **WHEN** the snapshot is asked for a code it does not hold
+- **THEN** it is refused with `UJP07-19 taxIndicator <code> is not in the snapshot of 2026-10-19; state its vatImpact explicitly`
 
-### Requirement: unit is optional free text, not a code from a list
-`LineItem.unit` SHALL be optional free text as the seller writes it — „ком.", „м²", „час", `"kg"` — never a code
-from a list. A blank `unit` SHALL be refused; an absent one SHALL be omitted from the wire.
+### Requirement: the document totals are summed unrounded and rounded once
+`DocumentTotals` SHALL be `net` (Σ `totalBeforeDiscount`), `discount` (Σ quantity × unit discount),
+`netAfterDiscount` (Σ `total`), `vat` (Σ `totalVat`) and `gross` (Σ `totalWithVat`), each rounded once to two decimals
+from the unrounded sum; `grossRounded` the unrounded gross rounded to a whole number; and `advanceAmount`, `increase`
+and `decrease` whole numbers. `finalAmount` SHALL be `grossRounded - advanceAmount + increase - decrease`. `gross` is the
+rounded sum of the lines' gross and not the rounded net plus the rounded VAT; the two can differ by a cent, inside the
+gateway's tolerance of 0.1, which the library never leans on.
 
-Nothing says UJP expects a unit at all, let alone a UN/ECE Rec 20 code, and inventing a list would refuse units a
-seller legitimately uses.
+#### Scenario: Four groups in one invoice
+- **WHEN** an invoice has four lines whose unrounded gross values are 105, 2000.0001, 1222.1 and 90
+- **THEN** `gross` is 3417.10, `grossRounded` 3417, `vat` 421.18 and `net` 2995.92, as UJP's example prints them
 
-#### Scenario: A blank unit is refused
-- **WHEN** a `LineItem`'s `unit` is a blank string
-- **THEN** it is refused
+#### Scenario: A cash turnover rounds its unrounded gross
+- **WHEN** a line's gross is 300.0032
+- **THEN** `gross` is 300, `vat` is 45.76 and `grossRounded` is 300
 
-#### Scenario: An absent unit is omitted from the wire
-- **WHEN** a `LineItem`'s `unit` is absent
-- **THEN** it is omitted from the serialized line item
+### Requirement: the VAT totals are one entry per indicator and group, in first-appearance order
+`VatTotal(indicator, group, taxable, vat, total)` SHALL be derived, one per tax indicator and rate group, in the order
+they first appear among the lines, from unrounded sums rounded once to two decimals. Under a `PRENESEN` indicator the
+lines carry no VAT and the document totals exclude it, but the entry SHALL show the VAT the group's rate puts on the
+base, with the indicator's note, as the API description says it appears "кај тоталите по даночен индикатор". That
+amount is `@ProvisionalSpec`: the description does not state it, and the art. 32 example that shows it is not
+internally consistent (its line prices do not reproduce its totals).
 
-### Requirement: netAmount, vatAmount and grossAmount are derived, never stored
-`LineItem.netAmount()`, `vatAmount()` and `grossAmount()` SHALL be derived from `quantity`, `unitPrice` and
-`vatCategory` on each call, never stored fields.
+#### Scenario: A transferred tax appears only in the per-indicator totals
+- **WHEN** a line of 1000 carries `DDV-11-A-G` in group `DDV-A`
+- **THEN** the document's VAT is 0 and its gross 1000, and the VAT total shows taxable 1000, VAT 180 and total 1180
 
-#### Scenario: Amounts are computed rather than read from a stored field
-- **WHEN** `LineItem.netAmount()`, `vatAmount()` or `grossAmount()` is called
-- **THEN** the value is computed from `quantity`, `unitPrice` and `vatCategory`, not read from a stored field
+### Requirement: an Advance and Adjustments are whole numbers, refused and never rounded
+`Advance(date, description, amount)` and `Adjustments(increase, decrease)` SHALL take whole numbers, as UJP08-08,
+UJP08-11 and UJP08-12 type them, and refuse a fraction or a negative number. An advance is refused on a kind whose page
+does not list it (all but 100). An absent adjustment counts as 0.
 
-### Requirement: DocumentType distinguishes an ordinary invoice from a credit or debit note
-`enum DocumentType { INVOICE, CREDIT_NOTE, DEBIT_NOTE }` SHALL expose `corrects()`, true for the two note types.
-`INVOICE` is an ordinary sales invoice; `CREDIT_NOTE` is „книжно одобрение" (lowers what an earlier invoice
-charged); `DEBIT_NOTE` is „книжно задолжување" (raises it).
+#### Scenario: A fractional advance is refused
+- **WHEN** an advance of 100.5 is given
+- **THEN** it is refused with `UJP08-08 advance.amount must be a whole number`
 
-#### Scenario: corrects() is true for both note types
-- **WHEN** `DocumentType.corrects()` is called on `CREDIT_NOTE` or on `DEBIT_NOTE`
-- **THEN** it is true
+### Requirement: Payment defaults to MKD and an Attribute is checked against its type
+`Payment(type, dueDays, dueDate, terms, interest, discount, note, currency)` SHALL bound `dueDays` to 0..9999 and
+default an absent currency to MKD (`@ProvisionalSpec`). `Attribute(name, value, type)` SHALL check `value` against
+`STR`, `DEC`, `INT` or `DATE`, at document level and on a line, and only on a kind that lists the group (100).
 
-#### Scenario: corrects() is false for an ordinary invoice
-- **WHEN** `DocumentType.corrects()` is called on `INVOICE`
-- **THEN** it is false
-
-### Requirement: DocumentReference names the number and issue date of the document a note corrects
-`record DocumentReference(String number, LocalDate issueDate)` SHALL require both parts. This library cannot check
-that the referenced document exists; a consumer that keeps its own invoices should check before building the note.
-
-#### Scenario: A DocumentReference missing its issue date is refused
-- **WHEN** a `DocumentReference` is built with no `issueDate`
-- **THEN** it is refused
-
-### Requirement: amounts on a credit or debit note stay positive
-A credit note or debit note SHALL carry positive amounts: a credit note for 1.000 MKD carries a line of 1.000,
-never −1.000. The document type carries the direction; the amounts carry the magnitude.
-
-Signing the amounts would state the same fact twice and would force `LineItem`'s positive-quantity rule open for
-notes, after which an ordinary typo on an ordinary invoice would stop being caught. See the `signed-note-amounts`
-requirement recorded as decided against in `product-boundaries`.
-
-#### Scenario: A credit note for 1.000 MKD carries a positive line amount
-- **WHEN** a `CREDIT_NOTE` is built for 1.000 MKD
-- **THEN** its line carries 1.000, never −1.000
-
-### Requirement: VatCategory enumerates the North Macedonian VAT categories, with verified rates
-`VatCategory` SHALL enumerate, per the Law on Value Added Tax: `STANDARD_18` (`code()` `"18"`, rate 0.18),
-`REDUCED_10` (`"10"`, 0.10), `REDUCED_5` (`"5"`, 0.05), `ZERO` (`"0"`, 0.00) and `EXEMPT` (`"EXEMPT"`, 0.00).
-
-The rates are public tax law and verified; only the wire `code()` for each is reconstructed — see
-`specification-status`.
-
-#### Scenario: STANDARD_18 carries an 18% rate and wire code "18"
-- **WHEN** `VatCategory.STANDARD_18`'s `code()` and rate are read
-- **THEN** the code is `"18"` and the rate is 0.18
-
-#### Scenario: EXEMPT carries a 0% rate and wire code "EXEMPT"
-- **WHEN** `VatCategory.EXEMPT`'s `code()` and rate are read
-- **THEN** the code is `"EXEMPT"` and the rate is 0.00
+#### Scenario: An attribute value that does not fit its type is refused
+- **WHEN** an attribute of type `DEC` has the value `abc`
+- **THEN** it is refused with `UJP12-01-02 attribute.value is not a valid DEC: abc`
 
 ### Requirement: a line is carried unrounded to four decimals, and its values are summed before they are rounded
 A line's derived values SHALL be computed at four decimals, `RoundingMode.HALF_UP`, through `internal.Money`, and SHALL
@@ -226,16 +232,13 @@ once, to two decimals. The whole-number fields SHALL be rounded to zero decimals
 
 This is the rule UJP's `/json-struktura` page states under "Заокружување". Rounding a line's net before computing its
 VAT, as 0.2.0 did, moves a total by a cent as soon as several lines are summed, and the gateway recomputes the
-totals itself. The gateway tolerates 0.1 of difference; the library never leans on it.
+totals itself. A test generates documents and holds the library to sum-then-round, and shows per-line rounding would
+differ.
 
 #### Scenario: Totals are summed before they are rounded
 - **WHEN** the lines' unrounded VAT values are 4.7619, 305.0848 and 111.1
 - **THEN** the document's VAT is their sum, 421.1848, rounded once to 421.18
 
-### Requirement: Totals must reconcile with the line items, or the Invoice is refused
-`Totals.compute` SHALL reconcile the per-category and invoice-wide sums against the line items, and `Invoice`'s
-canonical constructor SHALL refuse totals that do not reconcile.
-
-#### Scenario: Totals that do not match the line items are refused
-- **WHEN** an `Invoice` is built with `Totals` that do not reconcile against its `lineItems`
-- **THEN** it is refused
+#### Scenario: Rounding each line first would give another total
+- **WHEN** three lines each have a gross of 0.3953
+- **THEN** the document gross is 1.19, where rounding each line to 0.40 first would give 1.20
