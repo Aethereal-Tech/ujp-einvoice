@@ -219,13 +219,18 @@ The rates are public tax law and verified; only the wire `code()` for each is re
 - **WHEN** `VatCategory.EXEMPT`'s `code()` and rate are read
 - **THEN** the code is `"EXEMPT"` and the rate is 0.00
 
-### Requirement: a line rounds its net amount first, then computes VAT from the rounded net
-Money math SHALL round a line's net amount first, then compute its VAT amount from that rounded net, through
-`internal.Money.round`.
+### Requirement: a line is carried unrounded to four decimals, and its values are summed before they are rounded
+A line's derived values SHALL be computed at four decimals, `RoundingMode.HALF_UP`, through `internal.Money`, and SHALL
+NOT be rounded further. VAT totals and document totals SHALL be summed from those unrounded line values and rounded
+once, to two decimals. The whole-number fields SHALL be rounded to zero decimals.
 
-#### Scenario: VAT is computed from the rounded net, not the raw net
-- **WHEN** a `LineItem`'s net amount is rounded
-- **THEN** its VAT amount is computed from that rounded net, not from the unrounded value
+This is the rule UJP's `/json-struktura` page states under "Заокружување". Rounding a line's net before computing its
+VAT, as 0.2.0 did, moves a total by a cent as soon as several lines are summed, and the gateway recomputes the
+totals itself. The gateway tolerates 0.1 of difference; the library never leans on it.
+
+#### Scenario: Totals are summed before they are rounded
+- **WHEN** the lines' unrounded VAT values are 4.7619, 305.0848 and 111.1
+- **THEN** the document's VAT is their sum, 421.1848, rounded once to 421.18
 
 ### Requirement: Totals must reconcile with the line items, or the Invoice is refused
 `Totals.compute` SHALL reconcile the per-category and invoice-wide sums against the line items, and `Invoice`'s

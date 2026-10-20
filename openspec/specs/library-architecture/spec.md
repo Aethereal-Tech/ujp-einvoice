@@ -46,7 +46,7 @@ directly on `UjpJsonSerializer` or `JwsRs256Signer`.
   directly
 
 ### Requirement: internal holds the JSON writer and the single rounding convention, and depends on nothing
-The `internal` package SHALL hold `Money` (the single rounding convention) and `internal.json` (the minimal JSON
+The `internal` package SHALL hold `Money` (the single rounding mode) and `internal.json` (the minimal JSON
 reader/writer), and SHALL depend on nothing else in the library.
 
 #### Scenario: internal has no dependency on the other layers
@@ -73,10 +73,12 @@ Consumers need JDK 25+, which is deliberate, not an oversight to work around.
 - **WHEN** a consumer adds `net.aetherealtech:ujp-einvoice` as a dependency
 - **THEN** no transitive runtime dependency is pulled in, and JDK 25 or newer is required to use it
 
-### Requirement: money math has a single rounding convention, through internal.Money.round
-All money math SHALL use `BigDecimal`, `RoundingMode.HALF_UP`, two decimal places, exclusively through
-`internal.Money.round`.
+### Requirement: money math has a single rounding mode, through internal.Money
+All money math SHALL use `BigDecimal` and `RoundingMode.HALF_UP`, exclusively through `internal.Money`, at the scale
+each layer carries: line values unrounded up to four decimals, VAT and document totals summed unrounded and rounded to
+two, and the whole-number fields to zero, as UJP's `/json-struktura` states. There SHALL be no second rounding mode.
 
 #### Scenario: An amount is rounded
 - **WHEN** any amount in the library is rounded
-- **THEN** it goes through `internal.Money.round`, using `BigDecimal`, `RoundingMode.HALF_UP`, at two decimal places
+- **THEN** it goes through `internal.Money`, using `BigDecimal` and `RoundingMode.HALF_UP`, at the scale of the layer
+  that carries it

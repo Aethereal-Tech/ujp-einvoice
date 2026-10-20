@@ -47,8 +47,9 @@ reconsider before proceeding.
 - **Zero runtime dependencies.** See the comment above `<dependencies>` in `pom.xml` before adding
   one — the bar is "this is genuinely more than a few hundred lines of well-scoped JDK code", not
   "a library would be more convenient."
-- **Money math**: `BigDecimal`, `RoundingMode.HALF_UP`, two decimal places, via
-  `internal.Money.round`. Never introduce a second rounding convention.
+- **Money math**: `BigDecimal` and `RoundingMode.HALF_UP` everywhere, via `internal.Money`, at the scale each layer
+  carries: line values unrounded up to 4 decimals, VAT and document totals summed unrounded and rounded to 2, and the
+  whole-number fields to 0 — as UJP's /json-struktura states. Never a second rounding mode.
 - **Comments explain why, not what.** Don't narrate code that already reads clearly; do explain a
   non-obvious constraint, a rejected alternative, or a subtlety a future reader would otherwise have
   to re-derive.

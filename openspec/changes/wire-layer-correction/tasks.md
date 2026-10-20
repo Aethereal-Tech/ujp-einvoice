@@ -36,7 +36,7 @@
 
 ## 4. Money
 
-- [ ] 4.1 `internal.Money`: one `HALF_UP`, line values at scale 4 unrounded, VAT and document totals summed unrounded
+- [x] 4.1 `internal.Money`: one `HALF_UP`, line values at scale 4 unrounded, VAT and document totals summed unrounded
   then rounded to 2, and the integer fields rounded to whole numbers. Replace `invoice-model`'s "round the net first"
   requirement.
 - [ ] 4.2 Add a property test: totals computed from unrounded lines differ from totals of rounded lines in the cases
