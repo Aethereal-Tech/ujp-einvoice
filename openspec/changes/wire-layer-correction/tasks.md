@@ -83,10 +83,16 @@
 - [x] 9.1 Commit the `einvoice_api` OpenAPI under `src/test/resources`, and validate every status, catalogue and
   error body the client parses against it. Done with a small checker in the test sources and no dependency; it checks
   shape, not optionality (the description declares almost no `required`), and the client parses no catalogue.
-- [ ] 9.2 Settle `docAlt`'s type, null versus omit, `docGrossAmountR`'s rounding and the undocumented members. Remove
-  each remaining marker the schema confirms, with a citation.
-- [ ] 9.3 Re-run the comparison against `/известувања` and record anything newer in a dated comparison file.
-- [ ] 9.4 Sweep `@ProvisionalSpec`. What remains must be the production URL, `x5c`, and anything the schema left open,
+- [ ] 9.2 Cannot be completed until the JSON Receiver's document schema is published: the `einvoice_api` description
+  does not describe the `document`, so `docAlt`'s type, null versus omit, the undocumented members and the member list
+  per kind have nothing to be settled against. `docGrossAmountR`'s rounding needs a UJP answer, not the schema. The
+  rows are listed under (a) and (c) in `specification-status`. Remove each marker the schema confirms, with a
+  citation, once it exists.
+- [ ] 9.3 Re-run the comparison against `/известувања` and record anything newer in a dated comparison file. Not done
+  on 2026-10-20: the documentation host did not answer from the sweep's network (TCP connect timeout on 443 and 80,
+  repeated, while other hosts answered), so the changelog could not be fetched. The latest entry on record is 16.10.2026.
+  Re-run from a network that reaches it.
+- [x] 9.4 Sweep `@ProvisionalSpec`. What remains must be the production URL, `x5c`, and anything the schema left open,
   each named in `specification-status`.
 
 ## 10. Release (needs 9; submission additionally needs 0.5)
