@@ -185,3 +185,25 @@ verb, path root and shape.
 #### Scenario: A constant is relied upon
 - **WHEN** `PRODUCTION_BASE_URL` is relied upon
 - **THEN** it is treated as never observed and confirmed with УЈП first
+
+### Requirement: the client is checked against the gateway's published description
+`OpenApiConformanceTest` SHALL load the committed description (`src/test/resources/ujp/`, with its sha256 and
+retrieval note) and assert that: every `einvoice_api` path and method the client calls is an operation of it; every
+header it declares required is sent; the request body is its `InvoiceSignedRequest` in its declared media type; every
+response body in `GatewayBodies` that the test lists validates against the schema the description declares for that
+HTTP status; every member of `InvoiceStatus` and `DocumentStatusChange` is read; and every code the library lists
+under `EINVOICE_API` is in `ErrorStatusBean.errorCode`'s enum. The check uses a small checker in the test sources and
+adds no dependency.
+
+**It validates shape, not optionality, and cannot see the JSON Receiver.** The description declares almost no
+`required` members, so a body missing a member the real gateway always sends still passes. A JSON `null` is accepted
+for any member that is not required, because the gateway's own examples serve `"errorStatus": null`. The description
+covers `einvoice_api` only, so nothing validates the receiver's request or error body, or the `document`.
+
+#### Scenario: The client drops a required header
+- **WHEN** a request omits a header the description declares required
+- **THEN** `OpenApiConformanceTest` fails
+
+#### Scenario: The client calls a path the description lacks
+- **WHEN** an `einvoice_api` endpoint constant is not an operation of the description
+- **THEN** `OpenApiConformanceTest` fails

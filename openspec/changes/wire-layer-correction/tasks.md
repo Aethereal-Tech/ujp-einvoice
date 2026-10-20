@@ -80,7 +80,7 @@
 
 ## 9. Schema gate (needs 0.4)
 
-- [ ] 9.1 Commit the `einvoice_api` OpenAPI under `src/test/resources`, and validate every status, catalogue and
+- [x] 9.1 Commit the `einvoice_api` OpenAPI under `src/test/resources`, and validate every status, catalogue and
   error body the client parses against it. Done with a small checker in the test sources and no dependency; it checks
   shape, not optionality (the description declares almost no `required`), and the client parses no catalogue.
 - [ ] 9.2 Settle `docAlt`'s type, null versus omit, `docGrossAmountR`'s rounding and the undocumented members. Remove

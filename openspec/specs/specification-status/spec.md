@@ -325,6 +325,11 @@ list — description, quantity, unit, document number and date appear in example
 or obligation. Promoting names on the strength of examples is exactly how 0.2.0 came to be wrong, with better
 evidence this time.
 
+Partly met on 2026-10-20: the description of `einvoice_api` was fetched and is committed under
+`src/test/resources/ujp/` (`openapi-2026-10-20.md`), and the transport and status shapes are checked against it
+(`transport`). It does not cover the JSON Receiver, so the `document`, its optionality and the receiver's error body
+still have no schema behind them.
+
 #### Scenario: Field names are promoted on the strength of the worked examples
 - **WHEN** a serializer field name is called verified with only a worked example behind it
 - **THEN** it is refused, because an example is not the schema the gateway enforces
