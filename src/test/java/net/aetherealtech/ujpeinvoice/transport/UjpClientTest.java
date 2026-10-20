@@ -93,7 +93,7 @@ class UjpClientTest {
                 .isInstanceOf(UjpException.class)
                 .satisfies(ex -> {
                     UjpException e = (UjpException) ex;
-                    assertThat(e.errorCode()).isEqualTo(UjpException.E1012_CERTIFICATE_NOT_REGISTERED);
+                    assertThat(e.errorCode()).isEqualTo("E1012");
                     assertThat(e.httpStatus()).isEqualTo(400);
                     assertThat(e.getMessage()).isEqualTo("Certificate not registered");
                 });

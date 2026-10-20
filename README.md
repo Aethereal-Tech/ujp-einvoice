@@ -169,8 +169,8 @@ organizations builds one per organization and each signs with its own key.
 Per integrator accounts (see "Specification status" above), submitting invoices requires a
 KIBS- or Telekom-issued **qualified certificate**, pre-registered against your taxpayer account at
 `eujptest.ujp.gov.mk/ureg` (sandbox) before the corresponding production registration. A certificate
-that signs correctly but was never registered there is the likely cause of error `E1012`
-(`UjpException.E1012_CERTIFICATE_NOT_REGISTERED`).
+that signs correctly but was never registered there is the likely cause of error `E1012`, which the official
+catalogue gives as "Certificate not found" (`UjpErrorCodes.lookup(ErrorNamespace.JSON_RECEIVER, "E1012")`).
 
 ## Consuming this library (GitHub Packages)
 

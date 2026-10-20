@@ -1,6 +1,6 @@
 package net.aetherealtech.ujpeinvoice.transport;
 
-import net.aetherealtech.ujpeinvoice.ProvisionalSpec;
+import java.util.Optional;
 
 /**
  * The UJP gateway rejected a request, or the request could not be completed against it at all (see
@@ -8,40 +8,37 @@ import net.aetherealtech.ujpeinvoice.ProvisionalSpec;
  * gateway did not return one recognizable (or the failure predates a response, e.g. a connection
  * failure).
  *
- * <p>The named constants below are error codes observed in hands-on Macedonian integrator accounts.
- * Only {@link #E1012_CERTIFICATE_NOT_REGISTERED} has a documented meaning behind it; the others are
- * codes that were seen, without a confirmed explanation of what triggers them. Treat their names as
- * this library's placeholder, not a confirmed description.
+ * <p>A code means something only within the interface that raised it, so {@link #namespace()} travels with
+ * {@link #errorCode()} and {@link #known()} resolves the pair against D5, the official error catalogue
+ * (efakturawiki.ujp.gov.mk, {@code /error-codes}, updated 2026-10-05, retrieved 2026-10-19). Where the
+ * interface is not known, the code is not resolved at all: matching on the string alone would pick a
+ * meaning for it, and the same string means different things in different catalogues.
+ *
+ * <p>The raw response body is kept, when there was one, so that nothing the gateway said is lost to what
+ * this library knows how to read.
  */
 public class UjpException extends RuntimeException {
 
-    @ProvisionalSpec("Code and meaning reported by integrators: the signing certificate was not "
-            + "pre-registered at eujptest.ujp.gov.mk/ureg before submission.")
-    public static final String E1012_CERTIFICATE_NOT_REGISTERED = "E1012";
-
-    @ProvisionalSpec("Code observed in integrator reports; no confirmed explanation of its meaning found.")
-    public static final String E5004 = "E5004";
-
-    @ProvisionalSpec("Code observed in integrator reports; no confirmed explanation of its meaning found.")
-    public static final String E10001 = "E10001";
-
-    @ProvisionalSpec("Code observed in integrator reports; no confirmed explanation of its meaning found.")
-    public static final String E10002 = "E10002";
-
-    @ProvisionalSpec("Code observed in integrator reports; no confirmed explanation of its meaning found.")
-    public static final String E10003 = "E10003";
-
     private final int httpStatus;
+    private final ErrorNamespace namespace;
     private final String errorCode;
+    private final String responseBody;
 
     public UjpException(int httpStatus, String errorCode, String message) {
         this(httpStatus, errorCode, message, null);
     }
 
     public UjpException(int httpStatus, String errorCode, String message, Throwable cause) {
+        this(httpStatus, null, errorCode, null, message, cause);
+    }
+
+    public UjpException(int httpStatus, ErrorNamespace namespace, String errorCode, String responseBody,
+            String message, Throwable cause) {
         super(message, cause);
         this.httpStatus = httpStatus;
+        this.namespace = namespace;
         this.errorCode = errorCode;
+        this.responseBody = responseBody;
     }
 
     /** The HTTP status code, or -1 if the failure occurred before a response was received. */
@@ -52,5 +49,23 @@ public class UjpException extends RuntimeException {
     /** The gateway's own error code from the response body, or {@code null} if none was present. */
     public String errorCode() {
         return errorCode;
+    }
+
+    /** The interface that raised {@link #errorCode()}, or {@code null} when it is not known. */
+    public ErrorNamespace namespace() {
+        return namespace;
+    }
+
+    /** The response body exactly as received, or {@code null} when there was none. */
+    public String responseBody() {
+        return responseBody;
+    }
+
+    /**
+     * The catalogue entry for {@link #errorCode()} in {@link #namespace()}, or empty when either is
+     * absent or D5 lists no such code.
+     */
+    public Optional<UjpErrorCode> known() {
+        return UjpErrorCodes.lookup(namespace, errorCode);
     }
 }
