@@ -99,17 +99,22 @@ constructor and builder, the golden files, and `scripts/verify-jws.py`.
 
 ## Status
 
-**Tag.** Untagged — not built yet.
+**Tag.** BUILT on `next/1.0`, unreleased (2026-10-21). The model, money rule, serializer and goldens (#10), the
+error catalogue (#9), transport and signing (#11), and the record (#12) are merged into `next/1.0`. `master` is still
+0.2.0, and nothing has been published.
 
-**Why it waits.** As of 2026-10-19 (`specs/specification-status/comparison-2026-10-19.md`), building no longer
-waits: the per-document-type field matrix is published, and with D1 and the 08.10 examples it is enough to build
-against. Two things remain outside this change's reach, and `design.md` decision 9 moves them from the start of the
-work to its end. The gateway's machine-readable schema is still only behind the Swagger UI on the API host, which a
-person has to fetch; it now gates publishing, not starting. The version decision — 1.0.0 off an integration branch,
-recommended, or a parallel package; never `0.3.0` — is still the owner's.
+**Why it waits.** The release is held by the owner (2026-10-20) until the schemas and docs have been checked. Two
+tasks stay open:
 
-**Reopens when** the owner confirms the version decision; the work then proceeds on `next/1.0` per `tasks.md`, and
-merges to `master` only after the schema gate.
+- 9.2 is blocked on the JSON Receiver's document schema, which UJP has not published.
+- 9.3, the re-check of `/известувања` for entries after 16.10, could not run, because `efakturawiki.ujp.gov.mk` refused
+  connections on 2026-10-20 and 2026-10-21.
 
-**Prerequisites (owner).** The library owner — fetching the JSON Schema from the API host, and deciding the version
-number.
+`specification-status` lists every remaining `@ProvisionalSpec` marker, grouped by what would settle it.
+
+**Reopens when** the owner has reviewed the schemas and docs and says to release. Task 10.1 then merges `next/1.0` to
+`master` with `BREAKING CHANGE` in the merge body, and `publish.yml` cuts 1.0.0.
+
+**Prerequisites (owner).** The schema and docs review, the release go-ahead, and 9.3 from a network that reaches the
+documentation host. Real submission additionally needs task 0.5: a qualified certificate, its registration, and the
+granted privileges.
