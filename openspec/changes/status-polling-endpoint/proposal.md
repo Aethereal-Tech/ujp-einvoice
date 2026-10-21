@@ -30,11 +30,15 @@ None.
 
 ## Status
 
-**Tag.** PARKED.
+**Tag.** LANDED.
 
-**Why it waits.** The real endpoint is known; what remains is `wire-layer-correction` landing and being verified,
-not further evidence.
+**Landed with** `wire-layer-correction` task 8 on `next/1.0` (#11).
 
-**Reopens when** `wire-layer-correction` lands.
+- `UjpClient.status(euid)` is a signed `POST /einvoice_api/api/v1/documents/sales-invoice/current-status`.
+- `statusHistory` uses the history call.
+- `SubmissionStatus` is the served code/name pair.
 
-**Prerequisites (owner).** Library maintainers.
+All three are recorded in `transport` and `specification-status`. Not archived: it archives with
+`wire-layer-correction`.
+
+**Prerequisites (owner).** None remaining.
