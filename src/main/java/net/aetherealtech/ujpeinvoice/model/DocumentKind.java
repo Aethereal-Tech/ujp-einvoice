@@ -49,7 +49,7 @@ public enum DocumentKind {
      * makes the four sub-fields conditional on a reference being used at all. The accessor reports
      * the marker for a caller that wants to enforce it.
      */
-    @ProvisionalSpec("UJP02-01 is З on 110 and 120 but their 08.10 examples "
+    @ProvisionalSpec("UJP02-01 is З on 110 and 120 but their examples (unchanged from 08.10 to 21.10) "
             + "send an empty docReferences; the model reports the marker and does not enforce it")
     public boolean requiresReferences() {
         return this == CREDIT_NOTE || this == DEBIT_NOTE;

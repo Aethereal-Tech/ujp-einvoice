@@ -88,10 +88,11 @@
   per kind have nothing to be settled against. `docGrossAmountR`'s rounding needs a UJP answer, not the schema. The
   rows are listed under (a) and (c) in `specification-status`. Remove each marker the schema confirms, with a
   citation, once it exists.
-- [ ] 9.3 Re-run the comparison against `/известувања` and record anything newer in a dated comparison file. Not done
-  on 2026-10-20: the documentation host did not answer from the sweep's network (TCP connect timeout on 443 and 80,
-  repeated, while other hosts answered), so the changelog could not be fetched. The latest entry on record is 16.10.2026.
-  Re-run from a network that reaches it.
+- [x] 9.3 Re-run the comparison against `/известувања` and record anything newer in a dated comparison file. Done
+  2026-10-24: the entries of 19.10, 21.10 and 22.10 are in `specification-status/comparison-2026-10-24.md` and in the
+  code (the five Decimal 15.2 amounts, the 21.10 examples as goldens, the `ST` / `KR` split). The latest entry on record
+  is 22.10.2026. The first attempt, on 2026-10-20, could not reach the documentation host (TCP connect timeout on 443 and
+  80, while other hosts answered).
 - [x] 9.4 Sweep `@ProvisionalSpec`. What remains must be the production URL, `x5c`, and anything the schema left open,
   each named in `specification-status`.
 

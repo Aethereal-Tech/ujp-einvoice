@@ -59,7 +59,7 @@ public final class Money {
      * foreign currency, where the 19.10.2026 changelog makes the field Decimal 15.2.
      */
     @ProvisionalSpec("docGrossAmountR in a foreign currency is the gross at 2 decimals: the 19.10 changelog "
-            + "allows decimals there and names no rule, and the 21.10 EUR examples (510, and the one on p. 76) "
+            + "allows decimals there and names no rule, and the 21.10 EUR examples (kind 510, page 63, and kind 630, page 76) "
             + "have a whole gross, so they cannot show whether it is rounded to 0 or kept at 2")
     public static BigDecimal grossRounded(BigDecimal gross, boolean domestic) {
         return domestic ? whole(gross) : total(gross);

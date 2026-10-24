@@ -232,7 +232,7 @@ gateway's tolerance of 0.1, which the library never leans on.
 
 The foreign-currency `grossRounded` is `@ProvisionalSpec`. The 19.10.2026 changelog makes `docGrossAmountR`
 Decimal 15.2 and says decimals are for foreign currencies only; it states no rounding rule for them. The two EUR
-examples of the 21.10 set (kind 510, and the one on page 76) have a whole gross, 300 and 295, so they show the same
+examples of the 21.10 set (kind 510 on page 63, kind 630 on page 76) have a whole gross, 300 and 295, so they show the same
 number whether the field is rounded to 0 or kept at 2. The library keeps two decimals (`Money.grossRounded`).
 
 ### Requirement: the VAT totals are one entry per indicator and group, in first-appearance order

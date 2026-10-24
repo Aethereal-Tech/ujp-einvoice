@@ -7,8 +7,8 @@ import java.time.LocalDate;
  * turnover date, the length of the id, which indicator is valid) are checked by {@link Document}.
  *
  * <p>{@code alternativeMode} is a boolean here whatever the field is on the wire: the gateway's
- * changelog types it Boolean (14.09), the type pages Integer (08.10), and the only example that
- * carries it sends {@code false}.
+ * changelog types it Boolean (14.09), the type pages Integer (08.10), and every 21.10 example of
+ * 100 sends {@code false}.
  */
 public record Header(String number, String id, LocalDate date, LocalDate turnoverDate, LocalDate deliveryDate,
                      String delivery, LocalDate periodStart, LocalDate periodEnd, String notes,
