@@ -16,7 +16,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class DocumentTest {
 
-    private static final Reference ORIGINAL = new Reference(RefDocumentType.ST, DATE, "019dd423-bef7-73b7-abe6-f69721682406");
+    private static final String EUID = "019dd423-bef7-73b7-abe6-f69721682406";
+    private static final Reference ORIGINAL = new Reference(RefDocumentType.ST, DATE, EUID);
+    private static final Reference CORRECTED = new Reference(RefDocumentType.KR, DATE, EUID);
 
     private static Document.Builder of(DocumentKind kind) {
         Document.Builder builder = Document.builder(kind)
@@ -156,7 +158,7 @@ class DocumentTest {
     void aCorrectionKeepsItsAmountsPositive() {
         Document correction = of(DocumentKind.INVOICE)
                 .mode(new Mode.Correction(CorrectionReason.C01, null))
-                .reference(ORIGINAL)
+                .reference(CORRECTED)
                 .build();
 
         assertThat(correction.effectiveLines()).isEqualTo(correction.lines());
@@ -380,20 +382,50 @@ class DocumentTest {
     }
 
     @Test
-    void aStornoAndACorrectionNeedExactlyOneReferenceToTheOriginal() {
+    void aStornoNeedsExactlyOneSTAndACorrectionExactlyOneKR() {
         assertRefused(of(DocumentKind.INVOICE).mode(new Mode.Storno(VoidReason.S_1, null)),
                 "UJP02-01-01 references needs exactly one reference of type ST naming the original, to be stornoed");
         assertRefused(of(DocumentKind.INVOICE).mode(new Mode.Correction(CorrectionReason.C01, null)),
-                "UJP02-01-01 references needs exactly one reference of type ST naming the original, to be corrected");
+                "UJP02-01-01 references needs exactly one reference of type KR naming the original, to be corrected");
         assertRefused(of(DocumentKind.INVOICE).mode(new Mode.Storno(VoidReason.S_1, null)).reference(ORIGINAL).reference(ORIGINAL),
                 "UJP02-01-01 references needs exactly one reference of type ST naming the original, to be stornoed");
+        assertRefused(of(DocumentKind.INVOICE).mode(new Mode.Correction(CorrectionReason.C01, null)).reference(CORRECTED).reference(CORRECTED),
+                "UJP02-01-01 references needs exactly one reference of type KR naming the original, to be corrected");
+        assertThat(of(DocumentKind.INVOICE).mode(new Mode.Storno(VoidReason.S_1, null)).reference(ORIGINAL).build()
+                .references()).containsExactly(ORIGINAL);
+        assertThat(of(DocumentKind.INVOICE).mode(new Mode.Correction(CorrectionReason.C01, null)).reference(CORRECTED).build()
+                .references()).containsExactly(CORRECTED);
+    }
+
+    @Test
+    void aStornoMayNotNameItsOriginalWithKRNorACorrectionWithST() {
+        assertRefused(of(DocumentKind.INVOICE).mode(new Mode.Storno(VoidReason.S_1, null)).reference(CORRECTED),
+                "UJP02-01-01 references needs exactly one reference of type ST naming the original, to be stornoed");
+        assertRefused(of(DocumentKind.INVOICE).mode(new Mode.Storno(VoidReason.S_1, null)).reference(ORIGINAL).reference(CORRECTED),
+                "UJP02-01-01 references may not contain type KR on a storno: a storno names its original with ST (changelog 22.10.2026)");
+        assertRefused(of(DocumentKind.INVOICE).mode(new Mode.Correction(CorrectionReason.C01, null)).reference(ORIGINAL),
+                "UJP02-01-01 references needs exactly one reference of type KR naming the original, to be corrected");
+        assertRefused(of(DocumentKind.INVOICE).mode(new Mode.Correction(CorrectionReason.C01, null)).reference(CORRECTED).reference(ORIGINAL),
+                "UJP02-01-01 references may not contain type ST on a correction: a correction names its original with KR (changelog 22.10.2026)");
+    }
+
+    @Test
+    void aReferenceIsRecognisedByItsCodeNotByTheNameTheListGaveIt() {
+        // Until 22.10.2026 the list named ST "Сторно/Корекција"; a caller holding that pair still names the original.
+        Reference oldName = new Reference(new RefDocumentType("ST", "Сторно/Корекција"), DATE, EUID);
+
+        assertThat(of(DocumentKind.INVOICE).mode(new Mode.Storno(VoidReason.S_1, null)).reference(oldName).build()
+                .references()).containsExactly(oldName);
     }
 
     @Test
     void anOrdinaryDocumentMayNotNameAnOriginal() {
         assertRefused(of(DocumentKind.INVOICE).reference(ORIGINAL),
-                "UJP02-01-01 references may not contain type ST on an ordinary document: "
-                        + "ST names the original of a storno or correction");
+                "UJP02-01-01 references may not contain type ST or KR on an ordinary document: "
+                        + "they name the original of a storno or a correction");
+        assertRefused(of(DocumentKind.INVOICE).reference(CORRECTED),
+                "UJP02-01-01 references may not contain type ST or KR on an ordinary document: "
+                        + "they name the original of a storno or a correction");
         assertThat(of(DocumentKind.INVOICE).reference(new Reference(RefDocumentType.NAR, DATE, "order-7")).build().references())
                 .hasSize(1);
     }

@@ -4,9 +4,9 @@ import net.aetherealtech.ujpeinvoice.ProvisionalSpec;
 
 /**
  * Whether a document is an ordinary one, a storno of another, or a correction of another: the
- * {@code docStorno} axis (UJP01-14: 0, 1, 2), independent of the document's kind. A storno and a
- * correction both name the original through a reference of type {@code ST}, which {@link Document}
- * requires.
+ * {@code docStorno} axis (UJP01-14: 0, 1, 2), independent of the document's kind. A storno names the
+ * original through a reference of type {@code ST} and a correction through one of type {@code KR}
+ * (changelog 22.10.2026), each with the original's EUID; {@link Document} requires the one that fits.
  *
  * <p>A storno is the one place a quantity is negative, and the model writes the sign: the caller
  * describes the original's lines, so a caller cannot negate one line and forget another.

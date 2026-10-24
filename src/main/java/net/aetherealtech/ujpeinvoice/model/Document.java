@@ -79,14 +79,24 @@ public record Document(DocumentKind kind, Header header, Mode mode, List<Referen
     }
 
     private static void checkReferences(Mode mode, List<Reference> references) {
-        long originals = references.stream().filter(reference -> reference.type().equals(RefDocumentType.ST)).count();
+        long stornoed = references.stream().filter(reference -> reference.type().code().equals("ST")).count();
+        long corrected = references.stream().filter(reference -> reference.type().code().equals("KR")).count();
         switch (mode) {
-            case Mode.Ordinary _ -> Check.that(originals == 0, "UJP02-01-01", "references",
-                    "may not contain type ST on an ordinary document: ST names the original of a storno or correction");
-            case Mode.Storno _ -> Check.that(originals == 1, "UJP02-01-01", "references",
-                    "needs exactly one reference of type ST naming the original, to be stornoed");
-            case Mode.Correction _ -> Check.that(originals == 1, "UJP02-01-01", "references",
-                    "needs exactly one reference of type ST naming the original, to be corrected");
+            case Mode.Ordinary _ -> Check.that(stornoed + corrected == 0, "UJP02-01-01", "references",
+                    "may not contain type ST or KR on an ordinary document: they name the original of a storno "
+                            + "or a correction");
+            case Mode.Storno _ -> {
+                Check.that(stornoed == 1, "UJP02-01-01", "references",
+                        "needs exactly one reference of type ST naming the original, to be stornoed");
+                Check.that(corrected == 0, "UJP02-01-01", "references",
+                        "may not contain type KR on a storno: a storno names its original with ST (changelog 22.10.2026)");
+            }
+            case Mode.Correction _ -> {
+                Check.that(corrected == 1, "UJP02-01-01", "references",
+                        "needs exactly one reference of type KR naming the original, to be corrected");
+                Check.that(stornoed == 0, "UJP02-01-01", "references",
+                        "may not contain type ST on a correction: a correction names its original with KR (changelog 22.10.2026)");
+            }
         }
     }
 

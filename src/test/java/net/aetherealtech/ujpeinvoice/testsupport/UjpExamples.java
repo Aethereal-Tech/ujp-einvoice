@@ -79,6 +79,10 @@ public final class UjpExamples {
         return new Reference(RefDocumentType.ST, LocalDate.parse("2025-12-11"), EUID_OF_THE_ORIGINAL);
     }
 
+    private static Reference theOriginalCorrected() {
+        return new Reference(RefDocumentType.KR, LocalDate.parse("2025-12-11"), EUID_OF_THE_ORIGINAL);
+    }
+
     // ---- Kind 100 -------------------------------------------------------------------------------
 
     /** PDF pages 2-4, "Пример JSON за Општа Фактура". */
@@ -140,7 +144,7 @@ public final class UjpExamples {
         return Document.builder(DocumentKind.INVOICE)
                 .header(header("f52368c0-10a6-4cfd-9", "1318-1", "2026-04-22", "2026-04-22"))
                 .mode(new Mode.Correction(CorrectionReason.C01, null))
-                .reference(theOriginal())
+                .reference(theOriginalCorrected())
                 .seller(sampleTaxpayer())
                 .buyer(sampleTaxpayer())
                 .payment(card())

@@ -3,9 +3,10 @@ package net.aetherealtech.ujpeinvoice.model;
 /**
  * The type of a referenced document (UJP02-01-01/-02): a code and its name from the gateway's code
  * list, as of its 16.10.2026 revision. The list is served by the gateway and grows, so any pair is
- * accepted; the known ones are constants, with the eleven added on 15.10 last. {@link #ST} is the
- * reference a storno or a correction makes to the document it voids or replaces; the 2026-04-24 code
- * list predates it and the 16.10 type pages carry it.
+ * accepted; the known ones are constants, with the eleven added on 15.10 last. {@link #ST} and
+ * {@link #KR} are the references a storno and a correction make to the document they void or replace:
+ * one type for both until 22.10.2026, when the changelog split it into {@code ST Сторно} and
+ * {@code KR Корекција}, each of which must carry a valid EUID. The 2026-04-24 code list predates both.
  */
 public record RefDocumentType(String code, String name) {
 
@@ -21,7 +22,8 @@ public record RefDocumentType(String code, String name) {
     public static final RefDocumentType PON = new RefDocumentType("PON", "Понуда");
     public static final RefDocumentType FIS = new RefDocumentType("FIS", "Фискална сметка");
     public static final RefDocumentType DOC = new RefDocumentType("DOC", "Други документи");
-    public static final RefDocumentType ST = new RefDocumentType("ST", "Сторно/Корекција");
+    public static final RefDocumentType ST = new RefDocumentType("ST", "Сторно");
+    public static final RefDocumentType KR = new RefDocumentType("KR", "Корекција");
     public static final RefDocumentType PRJ = new RefDocumentType("PRJ", "Проект");
     public static final RefDocumentType REZ = new RefDocumentType("REZ", "Документ за проценка за цели на инвестициско вложување во објект на закуподавач");
     public static final RefDocumentType DOC_SEP = new RefDocumentType("DOC_SEP", "Документ за СЕП проект");
@@ -43,5 +45,10 @@ public record RefDocumentType(String code, String name) {
     public RefDocumentType {
         code = Check.required(code, "UJP02-01-01", "referenceType.code", 20);
         name = Check.required(name, "UJP02-01-02", "referenceType.name", 80);
+    }
+
+    /** True for {@code ST} and {@code KR}, whose number must be the EUID of the original (changelog 22.10.2026). */
+    public boolean namesAnOriginal() {
+        return code.equals(ST.code) || code.equals(KR.code);
     }
 }

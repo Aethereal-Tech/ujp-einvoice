@@ -72,8 +72,11 @@ that wants to enforce it. A reference needs all four parts once it is used.
 
 ### Requirement: Mode is the docStorno axis, independent of the kind
 `Mode` SHALL be a sealed interface of `Ordinary`, `Storno(VoidReason reason, String comment)` and
-`Correction(CorrectionReason reason, String comment)`. A storno and a correction SHALL carry exactly one reference of
-type `ST` naming the original, and an ordinary document SHALL carry none. A reason whose code list entry is "Друго"
+`Correction(CorrectionReason reason, String comment)`. A storno SHALL carry exactly one reference of type `ST` naming the
+original and none of type `KR`; a correction exactly one of type `KR` and none of type `ST`; an ordinary document
+neither. The 22.10.2026 changelog split the one reference type into `ST Сторно` and `KR Корекција` ("И кај двете мора да
+се прати валиден EUID", both must carry a valid EUID), so a type is recognised by its code and `ST`'s name is now
+"Сторно" (it was "Сторно/Корекција"). A reason whose code list entry is "Друго"
 (`S-5`, `C08`) requires a comment (`@ProvisionalSpec`: the list asks for free text). `VoidReason`, `CorrectionReason`,
 `RefDocumentType` and `PaymentType` are code-plus-name values: the gateway serves the lists, so any pair is accepted and
 the known ones are constants (the reference types as of 16.10, including the eleven added on 15.10). `docStorno` has no
@@ -83,9 +86,32 @@ row on the 110, 120 and 130 pages, so `Mode` is `@ProvisionalSpec` there and the
 - **WHEN** a storno is built without a reference of type `ST`
 - **THEN** it is refused with `UJP02-01-01 references needs exactly one reference of type ST naming the original, to be stornoed`
 
+#### Scenario: A correction without its original is refused
+- **WHEN** a correction is built with a reference of type `ST`, or without any
+- **THEN** it is refused with `UJP02-01-01 references needs exactly one reference of type KR naming the original, to be corrected`
+
+#### Scenario: A storno names its original with ST and a correction with KR
+- **WHEN** a storno also carries a reference of type `KR`, or a correction also one of type `ST`
+- **THEN** it is refused, citing the 22.10.2026 changelog
+
 #### Scenario: An ordinary document names no original
-- **WHEN** an ordinary document is built with a reference of type `ST`
+- **WHEN** an ordinary document is built with a reference of type `ST` or `KR`
 - **THEN** it is refused
+
+### Requirement: the number of an ST or KR reference is an EUID-shaped string
+`Reference(type, date, number)` SHALL refuse a number that is not shaped like a UUID in its textual form, 8-4-4-4-12
+hexadecimal digits in either case, when the type is `ST` or `KR`: the check is `RefDocumentType.namesAnOriginal`. It
+does not pin the version (the published EUIDs are version 7, and no document says the gateway pins it) and it cannot
+know whether the document exists, which only the gateway can. Any other type may carry a number that is not an EUID
+(UJP02-01-04: "EUID или друг број").
+
+#### Scenario: An order number on a storno reference is refused
+- **WHEN** a reference of type `ST` or `KR` carries the number `100-2625364731/2026`
+- **THEN** it is refused with `UJP02-01-04 reference.number must be the EUID of the original (8-4-4-4-12 hexadecimal digits) on type ST (changelog 22.10.2026)`
+
+#### Scenario: Another type keeps a free number
+- **WHEN** a reference of type `NAR` carries the number `100-2625364731/2026`
+- **THEN** it is accepted
 
 ### Requirement: a storno negates every quantity itself, and nothing else is negative
 The caller SHALL describe the original's lines with positive quantities; `Document.lines()` returns them as given and
