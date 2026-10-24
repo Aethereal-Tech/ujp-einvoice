@@ -174,15 +174,32 @@ class ValueTypesTest {
     }
 
     @Test
-    void anAdvanceAndAnAdjustmentAreWholeNumbersAndNeverRounded() {
+    void anAdvanceAndAnAdjustmentAreDecimal152AndNeverRounded() {
         assertThat(new Advance(LocalDate.of(2026, 1, 1), "advance", new BigDecimal("100")).amount()).isEqualByComparingTo("100");
-        assertThatThrownBy(() -> new Advance(null, null, new BigDecimal("100.5"))).hasMessage("UJP08-08 advance.amount must be a whole number");
-        assertThatThrownBy(() -> new Advance(null, null, null)).hasMessage("UJP08-08 advance.amount must be a whole number, zero or more");
+        assertThat(new Advance(null, null, new BigDecimal("100.50")).amount()).isEqualByComparingTo("100.5");
+        assertThatThrownBy(() -> new Advance(null, null, new BigDecimal("100.505"))).hasMessage(
+                "UJP08-08 advance.amount has at most 2 decimals; the model refuses rather than rounds");
+        assertThatThrownBy(() -> new Advance(null, null, null)).hasMessage("UJP08-08 advance.amount must be an amount of zero or more");
         assertThatThrownBy(() -> new Advance(null, null, new BigDecimal("-1"))).hasMessageContaining("zero or more");
         assertThat(new Adjustments(null, null)).isEqualTo(Adjustments.NONE);
         assertThat(new Adjustments(new BigDecimal("5"), new BigDecimal("2")).increase()).isEqualByComparingTo("5");
-        assertThatThrownBy(() -> new Adjustments(new BigDecimal("1.5"), null)).hasMessageStartingWith("UJP08-11");
-        assertThatThrownBy(() -> new Adjustments(null, new BigDecimal("1.5"))).hasMessageStartingWith("UJP08-12");
+        assertThat(new Adjustments(new BigDecimal("1.5"), new BigDecimal("0.25")).decrease()).isEqualByComparingTo("0.25");
+        assertThatThrownBy(() -> new Adjustments(new BigDecimal("1.005"), null)).hasMessageStartingWith("UJP08-11");
+        assertThatThrownBy(() -> new Adjustments(null, new BigDecimal("1.005"))).hasMessageStartingWith("UJP08-12");
+    }
+
+    @Test
+    void theNumberOfAnSTOrKRReferenceMustBeShapedLikeAnEuid() {
+        LocalDate date = LocalDate.of(2026, 1, 1);
+        String message = "UJP02-01-04 reference.number must be the EUID of the original (8-4-4-4-12 hexadecimal digits) on type ";
+
+        for (String bad : new String[] {"100-2625364731/2026", "01a15e7f5e4e7dcf849eccbf9f65386d",
+                "01a15e7f-5e4e-7dcf-849e-ccbf9f65386", "01a15e7f-5e4e-7dcf-849e-ccbf9f65386g", "f52368c0-10a6-4cfd-9"}) {
+            assertThatThrownBy(() -> new Reference(RefDocumentType.ST, date, bad)).hasMessage(message + "ST (changelog 22.10.2026)");
+            assertThatThrownBy(() -> new Reference(RefDocumentType.KR, date, bad)).hasMessage(message + "KR (changelog 22.10.2026)");
+        }
+        // Any other type may carry a number that is not an EUID (UJP02-01-04).
+        assertThat(new Reference(RefDocumentType.NAR, date, "100-2625364731/2026").number()).isEqualTo("100-2625364731/2026");
     }
 
     @Test
@@ -191,11 +208,17 @@ class ValueTypesTest {
         String euid = "019dd423-bef7-73b7-abe6-f69721682406";
 
         assertThat(new Reference(RefDocumentType.ST, date, euid).number()).isEqualTo(euid);
+        assertThat(new Reference(RefDocumentType.KR, date, euid.toUpperCase()).number()).isEqualTo(euid.toUpperCase());
         assertThatThrownBy(() -> new Reference(null, date, euid)).hasMessage("UJP02-01-01 reference.type is required");
         assertThatThrownBy(() -> new Reference(RefDocumentType.NAR, null, euid)).hasMessage("UJP02-01-03 reference.date is required");
         assertThatThrownBy(() -> new Reference(RefDocumentType.NAR, date, "x".repeat(37)))
                 .hasMessage("UJP02-01-04 reference.number is at most 36 characters");
         assertThatThrownBy(() -> new RefDocumentType("", "n")).hasMessageStartingWith("UJP02-01-01");
+        assertThat(RefDocumentType.ST.name()).isEqualTo("Сторно");
+        assertThat(RefDocumentType.KR.name()).isEqualTo("Корекција");
+        assertThat(RefDocumentType.ST.namesAnOriginal()).isTrue();
+        assertThat(RefDocumentType.KR.namesAnOriginal()).isTrue();
+        assertThat(RefDocumentType.SYS.namesAnOriginal()).isFalse();
         assertThatThrownBy(() -> new RefDocumentType("X", "")).hasMessageStartingWith("UJP02-01-02");
         assertThat(RefDocumentType.PIP.code()).isEqualTo("PIP");
     }

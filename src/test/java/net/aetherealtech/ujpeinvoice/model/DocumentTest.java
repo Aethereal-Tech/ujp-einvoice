@@ -7,6 +7,7 @@ import org.junit.jupiter.params.provider.EnumSource;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.Currency;
 import java.util.List;
 
 import static net.aetherealtech.ujpeinvoice.testsupport.DocumentFixtures.DATE;
@@ -15,7 +16,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class DocumentTest {
 
-    private static final Reference ORIGINAL = new Reference(RefDocumentType.ST, DATE, "019dd423-bef7-73b7-abe6-f69721682406");
+    private static final String EUID = "019dd423-bef7-73b7-abe6-f69721682406";
+    private static final Reference ORIGINAL = new Reference(RefDocumentType.ST, DATE, EUID);
+    private static final Reference CORRECTED = new Reference(RefDocumentType.KR, DATE, EUID);
 
     private static Document.Builder of(DocumentKind kind) {
         Document.Builder builder = Document.builder(kind)
@@ -86,6 +89,52 @@ class DocumentTest {
     }
 
     @Test
+    void aFractionInMkdIsRefusedByNameAndCitesTheChangelog() {
+        String note = " must be a whole number in MKD: decimal values are used only for foreign currencies (changelog 19.10.2026)";
+        assertRefused(DocumentFixtures.invoice().line(DocumentFixtures.consultingHour("1"))
+                .advance(new Advance(DATE, null, new BigDecimal("10.50"))), "UJP08-08 advance.amount" + note);
+        assertRefused(DocumentFixtures.invoice().line(DocumentFixtures.consultingHour("1"))
+                .adjustments(new Adjustments(new BigDecimal("0.10"), null)), "UJP08-11 adjustments.increase" + note);
+        assertRefused(DocumentFixtures.invoice().line(DocumentFixtures.consultingHour("1"))
+                .adjustments(new Adjustments(null, new BigDecimal("2.5"))), "UJP08-12 adjustments.decrease" + note);
+        assertRefused(DocumentFixtures.invoice().line(DocumentFixtures.consultingHour("1"))
+                .payment(Payment.of(PaymentType.P_12))
+                .adjustments(new Adjustments(new BigDecimal("0.10"), null)), "UJP08-11 adjustments.increase" + note);
+    }
+
+    @Test
+    void aWholeAmountWrittenWithTwoDecimalsIsStillWholeInMkd() {
+        Document document = DocumentFixtures.invoice().line(DocumentFixtures.consultingHour("1"))
+                .adjustments(new Adjustments(new BigDecimal("102.00"), null)).build();
+
+        assertThat(document.totals().increase()).isEqualByComparingTo("102");
+        assertThat(document.totals().finalAmount()).isEqualByComparingTo("220");
+    }
+
+    @Test
+    void aForeignCurrencyCarriesTwoDecimalsInTheAmountsOfTheFinalFormula() {
+        Payment euro = new Payment(PaymentType.P_12, null, null, null, null, null, null, Currency.getInstance("EUR"));
+        Document document = DocumentFixtures.invoice().payment(euro)
+                .line(Line.builder().description("x").quantity("1").unitPrice("100.40").standardRate(VatGroup.DDV_A).build())
+                .advance(new Advance(DATE, "advance", new BigDecimal("10.25")))
+                .adjustments(new Adjustments(new BigDecimal("1.10"), new BigDecimal("0.35")))
+                .build();
+
+        DocumentTotals totals = document.totals();
+        assertThat(document.currency()).isEqualTo(Currency.getInstance("EUR"));
+        assertThat(totals.gross()).isEqualByComparingTo("118.47");
+        assertThat(totals.grossRounded()).isEqualByComparingTo("118.47");
+        assertThat(totals.advanceAmount()).isEqualByComparingTo("10.25");
+        assertThat(totals.finalAmount()).isEqualByComparingTo("108.97");
+    }
+
+    @Test
+    void theCurrencyIsMkdWhereThereIsNoPaymentGroup() {
+        assertThat(of(DocumentKind.CREDIT_NOTE).build().currency()).isEqualTo(Payment.MKD);
+        assertThat(of(DocumentKind.INVOICE).build().currency()).isEqualTo(Payment.MKD);
+    }
+
+    @Test
     void aStornoNegatesEveryQuantityAndTheTotalsFollow() {
         Document storno = of(DocumentKind.INVOICE)
                 .line(Line.builder().description("y").quantity("1").unitPrice("50").standardRate(VatGroup.DDV_V).build())
@@ -109,7 +158,7 @@ class DocumentTest {
     void aCorrectionKeepsItsAmountsPositive() {
         Document correction = of(DocumentKind.INVOICE)
                 .mode(new Mode.Correction(CorrectionReason.C01, null))
-                .reference(ORIGINAL)
+                .reference(CORRECTED)
                 .build();
 
         assertThat(correction.effectiveLines()).isEqualTo(correction.lines());
@@ -333,20 +382,50 @@ class DocumentTest {
     }
 
     @Test
-    void aStornoAndACorrectionNeedExactlyOneReferenceToTheOriginal() {
+    void aStornoNeedsExactlyOneSTAndACorrectionExactlyOneKR() {
         assertRefused(of(DocumentKind.INVOICE).mode(new Mode.Storno(VoidReason.S_1, null)),
                 "UJP02-01-01 references needs exactly one reference of type ST naming the original, to be stornoed");
         assertRefused(of(DocumentKind.INVOICE).mode(new Mode.Correction(CorrectionReason.C01, null)),
-                "UJP02-01-01 references needs exactly one reference of type ST naming the original, to be corrected");
+                "UJP02-01-01 references needs exactly one reference of type KR naming the original, to be corrected");
         assertRefused(of(DocumentKind.INVOICE).mode(new Mode.Storno(VoidReason.S_1, null)).reference(ORIGINAL).reference(ORIGINAL),
                 "UJP02-01-01 references needs exactly one reference of type ST naming the original, to be stornoed");
+        assertRefused(of(DocumentKind.INVOICE).mode(new Mode.Correction(CorrectionReason.C01, null)).reference(CORRECTED).reference(CORRECTED),
+                "UJP02-01-01 references needs exactly one reference of type KR naming the original, to be corrected");
+        assertThat(of(DocumentKind.INVOICE).mode(new Mode.Storno(VoidReason.S_1, null)).reference(ORIGINAL).build()
+                .references()).containsExactly(ORIGINAL);
+        assertThat(of(DocumentKind.INVOICE).mode(new Mode.Correction(CorrectionReason.C01, null)).reference(CORRECTED).build()
+                .references()).containsExactly(CORRECTED);
+    }
+
+    @Test
+    void aStornoMayNotNameItsOriginalWithKRNorACorrectionWithST() {
+        assertRefused(of(DocumentKind.INVOICE).mode(new Mode.Storno(VoidReason.S_1, null)).reference(CORRECTED),
+                "UJP02-01-01 references needs exactly one reference of type ST naming the original, to be stornoed");
+        assertRefused(of(DocumentKind.INVOICE).mode(new Mode.Storno(VoidReason.S_1, null)).reference(ORIGINAL).reference(CORRECTED),
+                "UJP02-01-01 references may not contain type KR on a storno: a storno names its original with ST (changelog 22.10.2026)");
+        assertRefused(of(DocumentKind.INVOICE).mode(new Mode.Correction(CorrectionReason.C01, null)).reference(ORIGINAL),
+                "UJP02-01-01 references needs exactly one reference of type KR naming the original, to be corrected");
+        assertRefused(of(DocumentKind.INVOICE).mode(new Mode.Correction(CorrectionReason.C01, null)).reference(CORRECTED).reference(ORIGINAL),
+                "UJP02-01-01 references may not contain type ST on a correction: a correction names its original with KR (changelog 22.10.2026)");
+    }
+
+    @Test
+    void aReferenceIsRecognisedByItsCodeNotByTheNameTheListGaveIt() {
+        // Until 22.10.2026 the list named ST "Сторно/Корекција"; a caller holding that pair still names the original.
+        Reference oldName = new Reference(new RefDocumentType("ST", "Сторно/Корекција"), DATE, EUID);
+
+        assertThat(of(DocumentKind.INVOICE).mode(new Mode.Storno(VoidReason.S_1, null)).reference(oldName).build()
+                .references()).containsExactly(oldName);
     }
 
     @Test
     void anOrdinaryDocumentMayNotNameAnOriginal() {
         assertRefused(of(DocumentKind.INVOICE).reference(ORIGINAL),
-                "UJP02-01-01 references may not contain type ST on an ordinary document: "
-                        + "ST names the original of a storno or correction");
+                "UJP02-01-01 references may not contain type ST or KR on an ordinary document: "
+                        + "they name the original of a storno or a correction");
+        assertRefused(of(DocumentKind.INVOICE).reference(CORRECTED),
+                "UJP02-01-01 references may not contain type ST or KR on an ordinary document: "
+                        + "they name the original of a storno or a correction");
         assertThat(of(DocumentKind.INVOICE).reference(new Reference(RefDocumentType.NAR, DATE, "order-7")).build().references())
                 .hasSize(1);
     }

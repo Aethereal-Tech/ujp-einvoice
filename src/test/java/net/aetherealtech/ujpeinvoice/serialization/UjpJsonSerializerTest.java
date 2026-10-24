@@ -5,6 +5,7 @@ import net.aetherealtech.ujpeinvoice.internal.json.JsonBoolean;
 import net.aetherealtech.ujpeinvoice.internal.json.JsonNull;
 import net.aetherealtech.ujpeinvoice.internal.json.JsonObject;
 import net.aetherealtech.ujpeinvoice.internal.json.JsonParser;
+import net.aetherealtech.ujpeinvoice.model.Adjustments;
 import net.aetherealtech.ujpeinvoice.model.Advance;
 import net.aetherealtech.ujpeinvoice.model.Attribute;
 import net.aetherealtech.ujpeinvoice.model.AttributeType;
@@ -187,6 +188,26 @@ class UjpJsonSerializerTest {
         assertThat(totals.getString("docAvansDesc")).isEqualTo("advance for goods");
         assertThat(totals.getNumber("docAvansAmount")).isEqualByComparingTo("100");
         assertThat(totals.getNumber("docFinalAmount")).isEqualByComparingTo("136");
+    }
+
+    @Test
+    void theAmountsOfTheFinalFormulaPrintLikeTheExamplesDoAndNeverWithTrailingZeros() {
+        // Changelog 19.10.2026: MKD sums are whole numbers "with decimals ,00 (e.g. 102,00)". The 21.10
+        // examples print them as 102, never 102.00, and a foreign amount as 118.47, never 118.470.
+        Document mkd = DocumentFixtures.invoice().line(DocumentFixtures.consultingHour("1"))
+                .adjustments(new Adjustments(new BigDecimal("102.00"), null)).build();
+        Payment euro = new Payment(PaymentType.P_12, null, null, null, null, null, null, Currency.getInstance("EUR"));
+        Document foreign = DocumentFixtures.invoice().payment(euro)
+                .line(Line.builder().description("x").quantity("1").unitPrice("100.40").standardRate(VatGroup.DDV_A).build())
+                .advance(new Advance(DATE, null, new BigDecimal("10.50")))
+                .adjustments(new Adjustments(new BigDecimal("1.10"), new BigDecimal("0.35"))).build();
+
+        assertThat(new String(serializer.serialize(mkd, AT), StandardCharsets.UTF_8))
+                .contains("\"docGrossAmountR\":118,", "\"docAmountIncrease\":102,", "\"docFinalAmount\":220}")
+                .doesNotContain("102.0", "118.0");
+        assertThat(new String(serializer.serialize(foreign, AT), StandardCharsets.UTF_8))
+                .contains("\"docGrossAmount\":118.47,", "\"docGrossAmountR\":118.47,", "\"docAvansAmount\":10.5,",
+                        "\"docAmountIncrease\":1.1,", "\"docAmountDecrease\":0.35,", "\"docFinalAmount\":108.72}");
     }
 
     @Test

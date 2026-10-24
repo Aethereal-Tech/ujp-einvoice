@@ -72,8 +72,11 @@ that wants to enforce it. A reference needs all four parts once it is used.
 
 ### Requirement: Mode is the docStorno axis, independent of the kind
 `Mode` SHALL be a sealed interface of `Ordinary`, `Storno(VoidReason reason, String comment)` and
-`Correction(CorrectionReason reason, String comment)`. A storno and a correction SHALL carry exactly one reference of
-type `ST` naming the original, and an ordinary document SHALL carry none. A reason whose code list entry is "Друго"
+`Correction(CorrectionReason reason, String comment)`. A storno SHALL carry exactly one reference of type `ST` naming the
+original and none of type `KR`; a correction exactly one of type `KR` and none of type `ST`; an ordinary document
+neither. The 22.10.2026 changelog split the one reference type into `ST Сторно` and `KR Корекција` ("И кај двете мора да
+се прати валиден EUID", both must carry a valid EUID), so a type is recognised by its code and `ST`'s name is now
+"Сторно" (it was "Сторно/Корекција"). A reason whose code list entry is "Друго"
 (`S-5`, `C08`) requires a comment (`@ProvisionalSpec`: the list asks for free text). `VoidReason`, `CorrectionReason`,
 `RefDocumentType` and `PaymentType` are code-plus-name values: the gateway serves the lists, so any pair is accepted and
 the known ones are constants (the reference types as of 16.10, including the eleven added on 15.10). `docStorno` has no
@@ -83,9 +86,32 @@ row on the 110, 120 and 130 pages, so `Mode` is `@ProvisionalSpec` there and the
 - **WHEN** a storno is built without a reference of type `ST`
 - **THEN** it is refused with `UJP02-01-01 references needs exactly one reference of type ST naming the original, to be stornoed`
 
+#### Scenario: A correction without its original is refused
+- **WHEN** a correction is built with a reference of type `ST`, or without any
+- **THEN** it is refused with `UJP02-01-01 references needs exactly one reference of type KR naming the original, to be corrected`
+
+#### Scenario: A storno names its original with ST and a correction with KR
+- **WHEN** a storno also carries a reference of type `KR`, or a correction also one of type `ST`
+- **THEN** it is refused, citing the 22.10.2026 changelog
+
 #### Scenario: An ordinary document names no original
-- **WHEN** an ordinary document is built with a reference of type `ST`
+- **WHEN** an ordinary document is built with a reference of type `ST` or `KR`
 - **THEN** it is refused
+
+### Requirement: the number of an ST or KR reference is an EUID-shaped string
+`Reference(type, date, number)` SHALL refuse a number that is not shaped like a UUID in its textual form, 8-4-4-4-12
+hexadecimal digits in either case, when the type is `ST` or `KR`: the check is `RefDocumentType.namesAnOriginal`. It
+does not pin the version (the published EUIDs are version 7, and no document says the gateway pins it) and it cannot
+know whether the document exists, which only the gateway can. Any other type may carry a number that is not an EUID
+(UJP02-01-04: "EUID или друг број").
+
+#### Scenario: An order number on a storno reference is refused
+- **WHEN** a reference of type `ST` or `KR` carries the number `100-2625364731/2026`
+- **THEN** it is refused with `UJP02-01-04 reference.number must be the EUID of the original (8-4-4-4-12 hexadecimal digits) on type ST (changelog 22.10.2026)`
+
+#### Scenario: Another type keeps a free number
+- **WHEN** a reference of type `NAR` carries the number `100-2625364731/2026`
+- **THEN** it is accepted
 
 ### Requirement: a storno negates every quantity itself, and nothing else is negative
 The caller SHALL describe the original's lines with positive quantities; `Document.lines()` returns them as given and
@@ -182,18 +208,32 @@ contain a Cyrillic letter and are stored exactly so.
 ### Requirement: the document totals are summed unrounded and rounded once
 `DocumentTotals` SHALL be `net` (Σ `totalBeforeDiscount`), `discount` (Σ quantity × unit discount),
 `netAfterDiscount` (Σ `total`), `vat` (Σ `totalVat`) and `gross` (Σ `totalWithVat`), each rounded once to two decimals
-from the unrounded sum; `grossRounded` the unrounded gross rounded to a whole number; and `advanceAmount`, `increase`
-and `decrease` whole numbers. `finalAmount` SHALL be `grossRounded - advanceAmount + increase - decrease`. `gross` is the
+from the unrounded sum; `grossRounded` the unrounded gross rounded to a whole number in MKD and to two decimals in a
+foreign currency (`@ProvisionalSpec`, below); and `advanceAmount`, `increase` and `decrease` as given, whole in MKD and
+at most two decimals otherwise. `finalAmount` SHALL be `grossRounded - advanceAmount + increase - decrease`, so it is
+whole in MKD too. The currency is the payment's, and MKD where the document has no payment group (110, 120) or the
+payment names none. `gross` is the
 rounded sum of the lines' gross and not the rounded net plus the rounded VAT; the two can differ by a cent, inside the
 gateway's tolerance of 0.1, which the library never leans on.
 
 #### Scenario: Four groups in one invoice
 - **WHEN** an invoice has four lines whose unrounded gross values are 105, 2000.0001, 1222.1 and 90
-- **THEN** `gross` is 3417.10, `grossRounded` 3417, `vat` 421.18 and `net` 2995.92, as UJP's example prints them
+- **THEN** `gross` is 3417.10, `grossRounded` 3417, `vat` 421.18 and `net` 2995.92, as UJP's 08.10 example printed them
+  (superseded on 21.10 by a two-group example, so the figures are kept as a model test)
 
 #### Scenario: A cash turnover rounds its unrounded gross
 - **WHEN** a line's gross is 300.0032
 - **THEN** `gross` is 300, `vat` is 45.76 and `grossRounded` is 300
+
+#### Scenario: A foreign currency keeps two decimals
+- **WHEN** a document paid in EUR has a line of 100.40 at 18%, an advance of 10.50, an increase of 1.10 and a decrease of 0.35
+- **THEN** `gross` and `grossRounded` are 118.47 and `finalAmount` is 108.72, where the same document in MKD would
+  round `grossRounded` to 118 and refuse the fractions
+
+The foreign-currency `grossRounded` is `@ProvisionalSpec`. The 19.10.2026 changelog makes `docGrossAmountR`
+Decimal 15.2 and says decimals are for foreign currencies only; it states no rounding rule for them. The two EUR
+examples of the 21.10 set (kind 510 on page 63, kind 630 on page 76) have a whole gross, 300 and 295, so they show the same
+number whether the field is rounded to 0 or kept at 2. The library keeps two decimals (`Money.grossRounded`).
 
 ### Requirement: the VAT totals are one entry per indicator and group, in first-appearance order
 `VatTotal(indicator, group, taxable, vat, total)` SHALL be derived, one per tax indicator and rate group, in the order
@@ -207,14 +247,25 @@ internally consistent (its line prices do not reproduce its totals).
 - **WHEN** a line of 1000 carries `DDV-11-A-G` in group `DDV-A`
 - **THEN** the document's VAT is 0 and its gross 1000, and the VAT total shows taxable 1000, VAT 180 and total 1180
 
-### Requirement: an Advance and Adjustments are whole numbers, refused and never rounded
-`Advance(date, description, amount)` and `Adjustments(increase, decrease)` SHALL take whole numbers, as UJP08-08,
-UJP08-11 and UJP08-12 type them, and refuse a fraction or a negative number. An advance is refused on a kind whose page
-does not list it (all but 100). An absent adjustment counts as 0.
+### Requirement: an Advance and Adjustments are Decimal 15.2, whole in MKD, and refused rather than rounded
+`Advance(date, description, amount)` and `Adjustments(increase, decrease)` SHALL take amounts of zero or more with at
+most two decimals, as UJP08-08, UJP08-11 and UJP08-12 are typed since the 19.10.2026 changelog (Integer before it), and
+refuse a negative amount or a third decimal. `Document` SHALL refuse a fraction in MKD, citing the entry's note:
+"decimal values are used only for foreign currencies; in MKD the sum is a whole number with decimals ,00 (e.g. 102,00)".
+`102.00` is whole and accepted. The check sits in `Document`, which knows the currency, and not in the two records.
+An advance is refused on a kind whose page does not list it (all but 100). An absent adjustment counts as 0.
 
-#### Scenario: A fractional advance is refused
-- **WHEN** an advance of 100.5 is given
-- **THEN** it is refused with `UJP08-08 advance.amount must be a whole number`
+#### Scenario: A fractional advance in MKD is refused
+- **WHEN** an advance of 10.50 is given to an invoice paid in MKD
+- **THEN** it is refused with `UJP08-08 advance.amount must be a whole number in MKD: decimal values are used only for foreign currencies (changelog 19.10.2026)`
+
+#### Scenario: A fractional advance in EUR is accepted
+- **WHEN** an advance of 10.50 is given to an invoice paid in EUR
+- **THEN** it is accepted, and `docAvansAmount` is 10.5
+
+#### Scenario: A third decimal is refused in any currency
+- **WHEN** an advance of 100.505 is given
+- **THEN** it is refused with `UJP08-08 advance.amount has at most 2 decimals; the model refuses rather than rounds`
 
 ### Requirement: Payment defaults to MKD and an Attribute is checked against its type
 `Payment(type, dueDays, dueDate, terms, interest, discount, note, currency)` SHALL bound `dueDays` to 0..9999 and
@@ -228,7 +279,9 @@ default an absent currency to MKD (`@ProvisionalSpec`). `Attribute(name, value, 
 ### Requirement: a line is carried unrounded to four decimals, and its values are summed before they are rounded
 A line's derived values SHALL be computed at four decimals, `RoundingMode.HALF_UP`, through `internal.Money`, and SHALL
 NOT be rounded further. VAT totals and document totals SHALL be summed from those unrounded line values and rounded
-once, to two decimals. The whole-number fields SHALL be rounded to zero decimals.
+once, to two decimals. The five amounts of UJP08-08 to UJP08-12 (`docAvansAmount`, `docFinalAmount`,
+`docGrossAmountR`, `docAmountIncrease`, `docAmountDecrease`) SHALL be whole numbers in MKD and carry two decimals in a
+foreign currency (19.10.2026).
 
 This is the rule UJP's `/json-struktura` page states under "Заокружување". Rounding a line's net before computing its
 VAT, as 0.2.0 did, moves a total by a cent as soon as several lines are summed, and the gateway recomputes the

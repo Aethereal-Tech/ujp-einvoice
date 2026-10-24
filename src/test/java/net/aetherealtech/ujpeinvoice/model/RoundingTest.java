@@ -37,6 +37,33 @@ class RoundingTest {
     }
 
     @Test
+    void theFourGroupsOfTheSupersededExampleStillSumBeforeTheyRound() {
+        // primer_za_json_08.10 pp. 4-8, "Пример со повеќе ставки", which the 21.10 set replaced with a two-group
+        // example. It is the only worked document with all four groups and with unrounded line sums (2000.0001 and
+        // 3417.1001) that differ from the rounded ones, so its figures stay as a model test, not as a golden.
+        Document document = DocumentFixtures.invoice()
+                .line(Line.builder().description("a").quantity("1").unitPrice("100").standardRate(VatGroup.DDV_B).build())
+                .line(Line.builder().description("b").quantity("1").unitPrice("1694.9153").standardRate(VatGroup.DDV_A).build())
+                .line(Line.builder().description("c").quantity("1").unitPrice("1111").standardRate(VatGroup.DDV_V).build())
+                .line(Line.builder().description("d").quantity("1").unitPrice("90")
+                        .tax(VatGroup.DDV_G, TaxIndicators.SNAPSHOT_2026_08_27.get("DDV-G")).build())
+                .build();
+
+        assertThat(document.effectiveLines()).extracting(Line::totalWithVat)
+                .usingComparatorForType(BigDecimal::compareTo, BigDecimal.class)
+                .containsExactly(new BigDecimal("105"), new BigDecimal("2000.0001"), new BigDecimal("1222.1"),
+                        new BigDecimal("90"));
+        assertThat(document.totals().net()).isEqualByComparingTo("2995.92");
+        assertThat(document.totals().vat()).isEqualByComparingTo("421.18");
+        assertThat(document.totals().gross()).isEqualByComparingTo("3417.1");
+        assertThat(document.totals().grossRounded()).isEqualByComparingTo("3417");
+        assertThat(document.vatTotals()).extracting(VatTotal::taxable)
+                .usingComparatorForType(BigDecimal::compareTo, BigDecimal.class)
+                .containsExactly(new BigDecimal("100"), new BigDecimal("1694.92"), new BigDecimal("1111"),
+                        new BigDecimal("90"));
+    }
+
+    @Test
     void theLibraryAlwaysSumsBeforeItRounds() {
         Random random = new Random(20261020L);
         boolean sawADifference = false;

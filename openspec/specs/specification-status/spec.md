@@ -38,12 +38,13 @@ The official documents SHALL be treated as obtained, and any claim about the wir
 
 Retrieved 2026-09-13 from `efakturawiki.ujp.gov.mk`: the **API Спецификација** page at `/тест_апи`, which is the
 authoritative page; **`api-documentation-public8.pdf`**, revision "Public8", the same material in downloadable form
-and a subset of the page; **`primer_za_json_08.10.pdf`** dated 08.10.2026 (D3'), thirty-odd worked JSON documents, one per
-document type, which is the de facto field-level specification and replaces the 01.09.2026 set (D3); **`sifrarnici_24042026.pdf`**, the code lists and
+and a subset of the page; **`primer_za_json_21.10.pdf`** dated 21.10.2026 (D3''), 87 pages of worked JSON documents, one per
+document type and, for kind 100, one per feature, which is the de facto field-level specification and replaces the
+08.10.2026 set (D3') and, before it, the 01.09.2026 one (D3); **`sifrarnici_24042026.pdf`**, the code lists and
 the mandatory markers, but only for fields that draw on a code list; and the **error catalogue** at `/error-codes`,
-which is not linked from the specification page and was found by probing. The older example sets (01.09.2026 and
+which is not linked from the specification page and was found by probing. The older example sets (08.10.2026, 01.09.2026 and
 2026-04-29) are superseded and named only so a reader does not mistake them for current. The sources added on
-2026-10-19 are in the next requirement.
+2026-10-19 and 2026-10-24 are in the next requirement.
 
 The code lists tag each field `З`, `ЗШ`, `ЗП`, `О`, `ОШ` or `ОП`. They carry no legend, but UJP's `/json-struktura`
 publishes one (retrieved 2026-10-19): `З` mandatory, `О` optional, `Ш` code (шифра), `П` name (назив). The older
@@ -71,7 +72,8 @@ page's own stamp, `Last-Modified` the PDF's):
 |---|---|---|
 | D1 „API Спецификација", `/тест_апи` | `updated-at` 2026-10-16T14:36:59Z | Endpoints, headers, validations, formulas, response shapes; links D3' |
 | D2 `downloads/api-documentation-public8.pdf` | 35 pp, `Last-Modified` 2026-08-20 | A subset of D1: lacks `/purchase-tax-indicators*`, calls `/reject-reasons` what D1 calls `/reject-reason` |
-| **D3' `downloads/primer_za_json_08.10.pdf`** | 71 pp, `Last-Modified` 2026-10-08, sha256 `1011fc23...` | **Replaces D3.** The only set D1 links. One example differs from D3: the exempt-from-tax one now uses `DDV-8-2` and carries members no table lists |
+| **D3'' `downloads/primer_za_json_21.10.pdf`** | 87 pp, `Last-Modified` 2026-10-22, sha256 `60cdaa1a...`, fetched 2026-10-24 | **Replaces D3'.** The only set D1 links (D1 `updated-at` 2026-10-22T14:52:33Z). Every kind-100 example was rebuilt, six features have examples for the first time, and 110, 120, 130 and 310 are unchanged (`comparison-2026-10-24.md`) |
+| D3' `downloads/primer_za_json_08.10.pdf` | 71 pp, `Last-Modified` 2026-10-08, sha256 `1011fc23...` | Superseded by D3'' (not re-fetched on 2026-10-24). It replaced D3, with one example changed: the exempt-from-tax one used `DDV-8-2` and carried members no table lists |
 | D3 `primer_za_json_01.09.pdf` | 71 pp, `Last-Modified` 2026-09-07 | Superseded; still served |
 | `primer_za_json_3.pdf`, `primer_za_json_2.pdf` | 23 pp (created 2026-07-29), 16 pp (created 2026-04-29) | Interim and older sets; superseded |
 | D4 `sifrarnici_24042026.pdf` and `/шифрарници` | PDF 8 pp, created 2026-04-28; the page `updated-at` 2026-10-16T07:52Z | Code lists and markers, for code-list fields only |
@@ -82,15 +84,17 @@ page's own stamp, `Last-Modified` the PDF's):
 | `/status` | `updated-at` 2026-10-15 | The ten status codes (`SubmissionStatus` constants) |
 | `/danocni-indikatori` | `updated-at` 2026-08-27 | The tax-indicator list, about 104 codes (`TaxIndicators`) |
 | FAQ `/ЧПП` | `updated-at` 2026-06-09 | The JWS header `{"alg":"RS256","typ":"JWT"}` |
-| Changelog `/известувања` | entries 02.01.2026 to 16.10.2026 | Dated changes; the only history the wiki exposes (next requirement) |
+| Changelog `/известувања` | entries 02.01.2026 to 22.10.2026 (`updated-at` 2026-10-22T15:04:25Z, read 2026-10-24) | Dated changes; the only history the wiki exposes (next requirement). The entries since 16.10 are in `comparison-2026-10-24.md`: the five Decimal 15.2 amounts (19.10), the new examples (21.10), the `ST` / `KR` split (22.10) |
 | `einvoice_api` API description | fetched 2026-10-20 by the owner from the API host, `openapi-2026-10-20.md` | The `einvoice_api` shapes; not the JSON Receiver |
 
-The 08.10 examples, not the 01.09 set, are what the goldens' numbers come from; D3 stays in the record only because it
-is still served.
+The 21.10 examples (D3''), not the 08.10 or the 01.09 set, are what the goldens' numbers come from; D3 stays in the
+record only because it is still served. The type pages, `/json-struktura`, `/status` and the error catalogue were last
+read on 2026-10-19 and not re-fetched on 2026-10-24; the type pages then typed the five amounts of UJP08-08 to UJP08-12
+as Integer, which the 19.10 entry changed.
 
 #### Scenario: A reader asks which example set is current
 - **WHEN** an example is cited for a field's shape
-- **THEN** it is cited to D3' (08.10.2026), and the 01.09.2026 set is named only as superseded
+- **THEN** it is cited to D3'' (21.10.2026), and the 08.10.2026 and 01.09.2026 sets are named only as superseded
 
 ### Requirement: the changelog is the only history the wiki exposes
 The changelog page `/известувања` ("Промени во системот еФактура") SHALL be treated as the only history of the
@@ -107,6 +111,18 @@ through its `updated-at`.
 - **WHEN** a page differs from the earlier comparison
 - **THEN** the changelog's entries and the page's `updated-at` date the change where they can, and the record says so
   where they cannot
+
+### Requirement: the changelog is re-read before the merge, and anything newer gets a dated comparison file
+The comparison SHALL be re-run against the changelog before `next/1.0` is merged, and every entry newer than the last
+comparison SHALL be recorded in a dated file in this directory: the entry, its wire impact and what changed in the code.
+The latest entry on record is **22.10.2026**, read on 2026-10-24 (`comparison-2026-10-24.md`): the five Decimal 15.2
+amounts (19.10), the replacement of the JSON examples (21.10) and the `ST` / `KR` split of the storno and correction
+reference (22.10). The 22.10 entry also adds `docFilteredBy` to the `invoices-status` calls; the client implements neither
+call, so it is out of scope.
+
+#### Scenario: A changelog entry newer than the last comparison appears
+- **WHEN** the changelog carries an entry dated after the latest comparison file
+- **THEN** a new dated file records it before the merge, and the markers it settles or adds change in the same commit
 
 ### Requirement: the correction is a breaking release, never a 0.3.0
 The corrected wire layer SHALL ship as `1.0.0` or as a parallel package beside 0.2.0, never as a `0.3.0`.
@@ -311,9 +327,13 @@ RSA-SHA256(...)`, so RS256 and `typ` are cited and `JwsRs256Signer` writes exact
 Every URL in every obtained document names the sandbox host; no production host is published anywhere the
 investigation reached, so the production URL stays an inference drawn by removing "test" from a hostname. The
 rounding **mode and scale are now published** (/json-struktura, "Заокружување": `ROUND_HALF_UP`, four decimals on a
-line, two on the totals, whole numbers for UJP08-08 to UJP08-10) and the library follows them; what stays open is the
-rounding of `docGrossAmountR`, which the 28.04 changelog calls banking rounding and the newer guide calls ordinary, and
-which none of the worked examples (no value is a tie) can settle. The examples write explicit nulls throughout and the
+line, two on the totals, whole numbers for UJP08-08 to UJP08-10) and the library follows them. The 19.10.2026 changelog
+entry then typed UJP08-08 to UJP08-12 Decimal 15.2 and reserved the decimals for foreign currencies, so an MKD sum stays
+whole (`invoice-model` refuses a fraction there) and a foreign one may carry two decimals. What stays open is the
+rounding of `docGrossAmountR` in MKD, which the 28.04 changelog calls banking rounding and the newer guide calls ordinary,
+and which none of the worked examples (no value is a tie; the 21.10 multi-item's 667.5 is 668 under both) can settle, and
+the rounding of a foreign `docGrossAmountR`, which the entry does not state and the two EUR examples (a whole gross each)
+cannot show. The examples write explicit nulls throughout and the
 gateway's tolerance for omission is unstated, so following the examples is the defensible default rather than a known
 rule. Every one of the worked documents bills a **company**, and kind 170 (the invoice to a natural person) is not in
 1.0, so a natural-person buyer is refused by name rather than guessed at.
@@ -329,10 +349,11 @@ rule. Every one of the worked documents bills a **company**, and kind 170 (the i
 ### Requirement: every remaining `@ProvisionalSpec` is listed once here, grouped by what would settle it
 The model, the money rule and the serializer of the wire-layer correction are built. Every `@ProvisionalSpec` in
 `src/main` SHALL appear in the one table below, with what is provisional, the sources that conflict or are silent, and
-what would settle it, and a marker SHALL stay until that settles it. The table is the sweep of 2026-10-20: 19 markers
-on 19 elements, none of them settled by what the record now holds (each row was checked against
-`comparison-2026-10-19.md` and the API description of 2026-10-20, and none of those confirms a choice). The wire names `UjpJsonSerializer` writes are the ones the type pages' tables
-and the 08.10 examples print, each with its UJP code; they are cited to those pages, and none is **verified** against
+what would settle it, and a marker SHALL stay until that settles it. The table is the sweep of 2026-10-20, re-run on 2026-10-24: 20 markers
+on 20 elements, none of them settled by what the record now holds (each row was checked against
+`comparison-2026-10-19.md`, the API description of 2026-10-20 and `comparison-2026-10-24.md`, and none of those confirms a
+choice). The re-run added one marker, `Money.grossRounded`, and removed none. The wire names `UjpJsonSerializer` writes are the ones the type pages' tables
+and the 21.10 examples print, each with its UJP code; they are cited to those pages, and none is **verified** against
 the gateway's schema (the schema requirement below). The 0.2.0 reconstructions (`documentType`, `correctedInvoice`,
 `invoiceNumber`, `lineItems`, `byCategory` and the rest) went with the old model; the markers they carried went with
 them.
@@ -345,35 +366,39 @@ The three groups, by what settles a row:
 - **(b) The production URL.** No obtained document names a production host. One marker.
 - **(c) Sandbox evidence or a UJP answer.** A rule, a default or a reading that no schema would state, or a catalogue
   the gateway serves and no obtained copy holds. Sandbox behaviour alone is evidence, not confirmation (above), so a
-  row here closes on a UJP answer or on a served catalogue cited to its retrieval. Ten markers.
+  row here closes on a UJP answer or on a served catalogue cited to its retrieval. Eleven markers.
 
 | Marker | What is provisional | Sources that conflict or are silent | What would settle it |
 |---|---|---|---|
 | **(a) The gateway's document schema** | | | |
-| `UjpJsonSerializer` (class) | `null` for an absent scalar and `[]` for an empty list rather than omission; the envelope on 110, 120 and 130; one reason object where the 310 example writes both as null; no member written that no table documents (`source`, a trailing `requestTimestamp`, `sellerEinvoiceUser`, `buyerEinvoiceUser`, `docGlobalDiscountAmount`, `docItemUnitItemDiscountAmount`, `docItemHs`); which optional members are written when absent | Every example writes explicit nulls; D1 states a rule for empty amounts alone ("празно или не се прати" is treated as 0). The 110, 120 and 130 examples are bare, the others wrapped; the members appear in some examples and in no table | The JSON Receiver's JSON Schema |
-| `UjpJsonSerializer.header()` | `docAlt`: written as a JSON boolean. `docIndicator` is written on every kind | `docAlt` is Boolean in the 14.09 changelog, Integer(4) in the 08.10 tables, `false` in the one 08.10 example that carries it. Only the 100 table lists `docIndicator`; the 110, 120, 130 and 310 examples carry it | The schema's type for `docAlt` and its member list per kind |
-| `UjpJsonSerializer.appendCurrencyRate` | `docCurrencyDate` and `docCurrencyExchRate` are the document date and 1 beside MKD, `null` for another currency | The 130 and 310 tables list them (UJP10-10 `О` on 310 and `ОП` on 130, UJP10-11 `О` on both) and say nothing of how they are filled; the 15.10 changelog removed them from 100 while the 08.10 examples still print them | The schema, with the per-kind member list |
+| `UjpJsonSerializer` (class) | `null` for an absent scalar and `[]` for an empty list rather than omission; the envelope on 110, 120 and 130; one reason object where the 310 example writes both as null; no member written that no table documents (`source`, a trailing `requestTimestamp`, `sellerEinvoiceUser`, `buyerEinvoiceUser`, `sellerEntityType`, `buyerEntityType`, `docGlobalDiscountAmount`, `docItemUnitItemDiscountAmount`, `docItemHs`); which optional members are written when absent, among them a line's empty `attributes` | Every example writes explicit nulls; D1 states a rule for empty amounts alone ("празно или не се прати" is treated as 0). The 21.10 examples are bare on 110, 120, 130 and the ordinary 100s, a `document` with its reason and no timestamp on the 100 storno and correction, and enveloped on 310 alone; the members appear in some examples and in no table; a line's `attributes` is in the one example that has a line attribute and in no other | The JSON Receiver's JSON Schema |
+| `UjpJsonSerializer.header()` | `docAlt`: written as a JSON boolean. `docIndicator` is written on every kind | `docAlt` is Boolean in the 14.09 changelog, Integer(4) in the 08.10 tables, `false` in every 21.10 example of 100 and absent from the others. Only the 100 table lists `docIndicator`; the 110, 120, 130 and 310 examples carry it | The schema's type for `docAlt` and its member list per kind |
+| `UjpJsonSerializer.appendCurrencyRate` | `docCurrencyDate` and `docCurrencyExchRate` are the document date and 1 beside MKD, `null` for another currency | The 130 and 310 tables list them (UJP10-10 `О` on 310 and `ОП` on 130, UJP10-11 `О` on both) and say nothing of how they are filled; the 15.10 changelog removed them from 100, the 21.10 examples of 100 no longer print them, and the 130 and 310 examples still do | The schema, with the per-kind member list |
 | `UjpJsonSerializer.item` | `docItemTotalOriginalPriceWoVat` is written on every kind | In every example and the 310 table (UJP07-15), not in the 100, 110, 120 or 130 tables; the 24.06 changelog made it no longer mandatory | The schema's member list per kind |
-| `UjpJsonSerializer.totals` | The advance block and the increase and decrease are written on every kind | In every example; the tables list UJP08-06 to UJP08-09 on the 100 table alone | The schema's member list per kind |
-| `UjpJsonSerializer.vatTotal` | An absent `vatTaxIndicatorNote` is `null` | The 110, 130 and 310 examples write `null`; the 100 examples write `""` | The schema (nullability) |
+| `UjpJsonSerializer.totals` | The advance block and the increase and decrease are written on every kind | In every 100 example; the 110, 120, 130 and 310 examples print no increase or decrease, and the tables list UJP08-06 to UJP08-09 on the 100 table alone | The schema's member list per kind |
+| `UjpJsonSerializer.vatTotal` | An absent `vatTaxIndicatorNote` is `null` | Every 21.10 example writes `null` (the 08.10 examples of 100 wrote `""`, so that conflict is gone); nullability itself is unstated | The schema (nullability) |
 | `UjpClient.JSON` | The send request's `Content-Type` is `application/json` | No obtained document states it for the JSON Receiver; the `einvoice_api` operations declare `application/json` | The JSON Receiver's API description |
 | `UjpClient.refusal` | The JSON Receiver's error body is parsed as either `einvoice_api` shape (`GenericAPIResponse` or a bare `ErrorStatusBean`) and otherwise kept raw | D1, D2 and the flow chart show only "Враќање на грешка"; every example writes `"errorStatus": null` | The JSON Receiver's API description |
 | **(b) The production URL** | | | |
 | `UjpEndpoints.PRODUCTION_BASE_URL` | The host, inferred from the sandbox name by removing "test"; used by nothing | Every URL in every obtained document names `efakturatest` or `eujptest`; no document uses the word production; the programme is described as test phases | A host UJP publishes or confirms, or the production portal |
 | **(c) Sandbox evidence or a UJP answer** | | | |
-| `DocumentKind.requiresReferences` | Reported, not enforced: UJP02-01 is `З` on 110 and 120 | The 110 and 120 pages mark it `З (1..n)`; their 08.10 examples send `[]`; the page's own note makes the four sub-fields conditional on a reference being used | A UJP answer, or the served document-types catalogue (`isReferenceMandatory`, `hasReference`) read and cited |
+| `DocumentKind.requiresReferences` | Reported, not enforced: UJP02-01 is `З` on 110 and 120 | The 110 and 120 pages mark it `З (1..n)`; their examples send `[]` (unchanged from 08.10 to 21.10); the page's own note makes the four sub-fields conditional on a reference being used | A UJP answer, or the served document-types catalogue (`isReferenceMandatory`, `hasReference`) read and cited |
 | `Mode` | A storno or correction is not refused on 110, 120 and 130 | `docStorno` has no row on those three pages and their examples send 0 | A UJP answer |
 | `VoidReason.needsComment` | The free-text comment of "Друго" is mandatory | The code list says "Друго (внес на слободен текст)"; `VoidReasonDto` in the API description has no comment flag | A UJP answer |
 | `CorrectionReason.needsComment` | The same, for the correction reasons | The same; `CorrectionReasonDto` has no comment flag | A UJP answer |
 | `Payment` | An absent currency reads as MKD | Every example carries MKD; the tables mark the currency optional (`ОШ`) and say nothing of a default; the 28.07 changelog says it will be dropped | A UJP answer |
 | `VatTotal.of` | The VAT shown under a `PRENESEN` indicator is the base times the group's rate | The API description says the indicator shows its VAT with a note; the one art. 32 example that shows an amount is not internally consistent | A UJP answer, or a worked example that reconciles |
 | `TaxIndicators` | `vatImpact` of every entry except `DDV-A`, `DDV-V`, `DDV-B` and `DDV-G` is the library's reading of the name | `/danocni-indikatori` has no `vatImpact` column; the API description's `TaxIndicatorDto` serves it per indicator but no obtained copy holds the values | The served tax-indicators catalogue read and cited to its retrieval, or a UJP answer |
-| `Money.whole` | `docGrossAmountR` rounds half-up | The 28.04 changelog calls it banking rounding; `/json-struktura` says `ROUND_HALF_UP`; no example value is a tie | A UJP answer, or a tie value in a worked example |
+| `Money.whole` | `docGrossAmountR` rounds half-up (in MKD, where it stays a whole number) | The 28.04 changelog calls it banking rounding; `/json-struktura` says `ROUND_HALF_UP`; no example value is a tie (the 21.10 multi-item prints a gross of 667.5, from an unrounded 667.5032, and 668 is the answer under either mode) | A UJP answer, or a tie value in a worked example |
+| `Money.grossRounded` | In a foreign currency `docGrossAmountR` is the gross at two decimals, not a whole number | The 19.10 changelog makes the field Decimal 15.2 and reserves decimals for foreign currencies, with no rounding rule; the two 21.10 EUR examples (kind 510, page 63; kind 630, page 76) have a whole gross (300, 295), which both readings print alike | A UJP answer, or a foreign-currency example whose gross has a fraction |
 | `JwsRs256Signer.x5c` | The claim is written only when a chain is supplied | No obtained document mentions it; the certificate is identified by the registered certificate and `X-SERIAL-NUMBER` (`E5012`); the FAQ's header has two members; the API description's example header is a truncated `{"alg":"RS256"}` | A UJP answer |
 | `UjpClient.statusHistory` | `dateFrom` is written as a date and omitted when `null` | A date-time in D1 (`2025-12-25T13:07:30`); a date in the API description's example (`2026-01-01`, "on or after this date"); no document says it may be omitted | A UJP answer |
 
-Open questions for the schema, not decisions: the `ЗШ*` asterisk, the members the examples carry and no table documents,
-`MARGINALNA`'s arithmetic (the model refuses it), and the `vatType` of an indicator.
+Open questions for the schema, not decisions: the `ЗШ*` asterisk, the members the examples carry and no table documents
+(since 21.10 including `sellerEntityType` / `buyerEntityType`, and `docGlobalDiscountAmount`, which the discount example
+fills with the discount), `MARGINALNA`'s arithmetic (the model refuses it), the `vatType` of an indicator, the name of a
+`SYS` reference (`Фактура` in the 21.10 example, `Од систем` in the code list), and whether `docCurrencyExchRate` is a string
+or a number (the 510 and 630 examples print a string, 310 a number).
 
 #### Scenario: A marker is removed
 - **WHEN** a source obtained later confirms one of these choices

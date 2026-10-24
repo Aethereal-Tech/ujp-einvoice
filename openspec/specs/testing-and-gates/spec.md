@@ -54,8 +54,11 @@ coverage up.
 
 ### Requirement: the serializer is pinned by golden files, regenerated deliberately
 `UjpJsonSerializer`'s output SHALL be pinned by golden files in `src/test/resources/golden/`, one per worked example of
-UJP's 08.10 primer: `invoice-ordinary.json`, `invoice-storno.json`, `invoice-correction.json`,
-`invoice-multi-item.json`, `credit-note.json`, `debit-note.json`, `advance-invoice.json` and `cash-turnover.json`. They
+UJP's 21.10 primer: `invoice-ordinary.json`, `invoice-multi-item.json`, `invoice-reference.json`,
+`invoice-discount.json`, `invoice-increase.json`, `invoice-decrease.json`, `invoice-document-attribute.json`,
+`invoice-line-attribute.json`, `invoice-storno-original.json`, `invoice-storno.json`,
+`invoice-correction-original.json`, `invoice-correction.json`, `credit-note.json`, `debit-note.json`,
+`advance-invoice.json` and `cash-turnover.json`. They
 are this library's output and not UJP's JSON, which is not committed (see `serialization`). They SHALL be regenerated
 deliberately with `-Dgolden.regenerate=true`, never by hand-editing, and the `specification-status` inventory SHALL be
 updated in the same change.

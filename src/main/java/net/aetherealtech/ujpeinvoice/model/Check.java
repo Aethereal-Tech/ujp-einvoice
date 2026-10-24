@@ -44,9 +44,16 @@ final class Check {
         return value;
     }
 
-    static BigDecimal wholeNumber(BigDecimal value, String ujp, String field) {
-        that(value != null && value.signum() >= 0, ujp, field, "must be a whole number, zero or more");
-        that(value.stripTrailingZeros().scale() <= 0, ujp, field, "must be a whole number");
-        return value;
+    /** A Decimal 15.2 amount that may not be negative: UJP08-08, UJP08-11 and UJP08-12 since the 19.10.2026 changelog. */
+    static BigDecimal amount(BigDecimal value, String ujp, String field) {
+        that(value != null && value.signum() >= 0, ujp, field, "must be an amount of zero or more");
+        return decimals(value, 2, ujp, field);
+    }
+
+    /** The 19.10.2026 note: a fraction is for a foreign currency, and an MKD sum is a whole number. */
+    static void wholeInMkd(BigDecimal value, String ujp, String field) {
+        that(value.stripTrailingZeros().scale() <= 0, ujp, field,
+                "must be a whole number in MKD: decimal values are used only for foreign currencies "
+                        + "(changelog 19.10.2026)");
     }
 }

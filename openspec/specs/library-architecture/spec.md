@@ -88,7 +88,9 @@ Consumers need JDK 25+, which is deliberate, not an oversight to work around.
 ### Requirement: money math has a single rounding mode, through internal.Money
 All money math SHALL use `BigDecimal` and `RoundingMode.HALF_UP`, exclusively through `internal.Money`, at the scale
 each layer carries: line values unrounded up to four decimals, VAT and document totals summed unrounded and rounded to
-two, and the whole-number fields to zero, as UJP's `/json-struktura` states. There SHALL be no second rounding mode.
+two, and the five Decimal 15.2 amounts of UJP08-08 to UJP08-12 (advance, final, gross rounded, increase, decrease) to zero
+in MKD and to two in a foreign currency, as UJP's `/json-struktura` and its 19.10.2026 changelog entry state. There SHALL
+be no second rounding mode.
 
 #### Scenario: An amount is rounded
 - **WHEN** any amount in the library is rounded

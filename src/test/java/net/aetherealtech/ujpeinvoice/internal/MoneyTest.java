@@ -38,6 +38,14 @@ class MoneyTest {
     }
 
     @Test
+    void theRoundedGrossIsWholeInMkdAndAtTwoDecimalsInAForeignCurrency() {
+        assertThat(Money.grossRounded(new BigDecimal("667.5032"), true)).isEqualByComparingTo("668");
+        assertThat(Money.grossRounded(new BigDecimal("667.5032"), true).scale()).isZero();
+        assertThat(Money.grossRounded(new BigDecimal("667.5032"), false)).isEqualByComparingTo("667.50");
+        assertThat(Money.grossRounded(new BigDecimal("667.5032"), false).scale()).isEqualTo(2);
+    }
+
+    @Test
     void halfRoundsAwayFromZeroSoAStornoMirrorsItsOriginal() {
         assertThat(Money.whole(new BigDecimal("-694.5"))).isEqualByComparingTo("-695");
         assertThat(Money.total(new BigDecimal("-0.125"))).isEqualByComparingTo("-0.13");
