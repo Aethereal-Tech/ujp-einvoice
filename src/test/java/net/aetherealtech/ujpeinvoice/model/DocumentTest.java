@@ -7,6 +7,7 @@ import org.junit.jupiter.params.provider.EnumSource;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.Currency;
 import java.util.List;
 
 import static net.aetherealtech.ujpeinvoice.testsupport.DocumentFixtures.DATE;
@@ -83,6 +84,52 @@ class DocumentTest {
         assertThat(totals.increase()).isEqualByComparingTo("10");
         assertThat(totals.decrease()).isEqualByComparingTo("5");
         assertThat(totals.finalAmount()).isEqualByComparingTo("505");
+    }
+
+    @Test
+    void aFractionInMkdIsRefusedByNameAndCitesTheChangelog() {
+        String note = " must be a whole number in MKD: decimal values are used only for foreign currencies (changelog 19.10.2026)";
+        assertRefused(DocumentFixtures.invoice().line(DocumentFixtures.consultingHour("1"))
+                .advance(new Advance(DATE, null, new BigDecimal("10.50"))), "UJP08-08 advance.amount" + note);
+        assertRefused(DocumentFixtures.invoice().line(DocumentFixtures.consultingHour("1"))
+                .adjustments(new Adjustments(new BigDecimal("0.10"), null)), "UJP08-11 adjustments.increase" + note);
+        assertRefused(DocumentFixtures.invoice().line(DocumentFixtures.consultingHour("1"))
+                .adjustments(new Adjustments(null, new BigDecimal("2.5"))), "UJP08-12 adjustments.decrease" + note);
+        assertRefused(DocumentFixtures.invoice().line(DocumentFixtures.consultingHour("1"))
+                .payment(Payment.of(PaymentType.P_12))
+                .adjustments(new Adjustments(new BigDecimal("0.10"), null)), "UJP08-11 adjustments.increase" + note);
+    }
+
+    @Test
+    void aWholeAmountWrittenWithTwoDecimalsIsStillWholeInMkd() {
+        Document document = DocumentFixtures.invoice().line(DocumentFixtures.consultingHour("1"))
+                .adjustments(new Adjustments(new BigDecimal("102.00"), null)).build();
+
+        assertThat(document.totals().increase()).isEqualByComparingTo("102");
+        assertThat(document.totals().finalAmount()).isEqualByComparingTo("220");
+    }
+
+    @Test
+    void aForeignCurrencyCarriesTwoDecimalsInTheAmountsOfTheFinalFormula() {
+        Payment euro = new Payment(PaymentType.P_12, null, null, null, null, null, null, Currency.getInstance("EUR"));
+        Document document = DocumentFixtures.invoice().payment(euro)
+                .line(Line.builder().description("x").quantity("1").unitPrice("100.40").standardRate(VatGroup.DDV_A).build())
+                .advance(new Advance(DATE, "advance", new BigDecimal("10.25")))
+                .adjustments(new Adjustments(new BigDecimal("1.10"), new BigDecimal("0.35")))
+                .build();
+
+        DocumentTotals totals = document.totals();
+        assertThat(document.currency()).isEqualTo(Currency.getInstance("EUR"));
+        assertThat(totals.gross()).isEqualByComparingTo("118.47");
+        assertThat(totals.grossRounded()).isEqualByComparingTo("118.47");
+        assertThat(totals.advanceAmount()).isEqualByComparingTo("10.25");
+        assertThat(totals.finalAmount()).isEqualByComparingTo("108.97");
+    }
+
+    @Test
+    void theCurrencyIsMkdWhereThereIsNoPaymentGroup() {
+        assertThat(of(DocumentKind.CREDIT_NOTE).build().currency()).isEqualTo(Payment.MKD);
+        assertThat(of(DocumentKind.INVOICE).build().currency()).isEqualTo(Payment.MKD);
     }
 
     @Test

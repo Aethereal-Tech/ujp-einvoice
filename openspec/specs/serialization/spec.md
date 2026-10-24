@@ -85,7 +85,10 @@ changelog types it Boolean, the 08.10 tables Integer(4), and the one example tha
 
 ### Requirement: numbers are written without trailing zeros, in a fixed member order
 Every number SHALL be written as a JSON number without trailing zeros, so 100.0000 is written `100`, 3417.10 `3417.1`
-and 4.7619 `4.7619`: how every example prints its figures. Member order within each object is fixed, following the
+and 4.7619 `4.7619`: how every example prints its figures. That includes the five amounts that became Decimal 15.2
+on 19.10.2026: the 21.10 examples print an MKD sum as `300`, `668`, `-35` or `154`, never `300.00`, and a fractional
+one as `288.2`, so the entry's ",00" (e.g. 102,00) is a display convention the JSON does not carry, and a foreign
+amount of 118.470 is written `118.47`. Member order within each object is fixed, following the
 tables' UJP codes, because the examples disagree among themselves (`docStorno` is first in some and last in others) and
 the signed bytes are ours either way. The same document serializes to the same bytes.
 

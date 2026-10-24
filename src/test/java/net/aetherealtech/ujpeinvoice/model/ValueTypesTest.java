@@ -174,15 +174,18 @@ class ValueTypesTest {
     }
 
     @Test
-    void anAdvanceAndAnAdjustmentAreWholeNumbersAndNeverRounded() {
+    void anAdvanceAndAnAdjustmentAreDecimal152AndNeverRounded() {
         assertThat(new Advance(LocalDate.of(2026, 1, 1), "advance", new BigDecimal("100")).amount()).isEqualByComparingTo("100");
-        assertThatThrownBy(() -> new Advance(null, null, new BigDecimal("100.5"))).hasMessage("UJP08-08 advance.amount must be a whole number");
-        assertThatThrownBy(() -> new Advance(null, null, null)).hasMessage("UJP08-08 advance.amount must be a whole number, zero or more");
+        assertThat(new Advance(null, null, new BigDecimal("100.50")).amount()).isEqualByComparingTo("100.5");
+        assertThatThrownBy(() -> new Advance(null, null, new BigDecimal("100.505"))).hasMessage(
+                "UJP08-08 advance.amount has at most 2 decimals; the model refuses rather than rounds");
+        assertThatThrownBy(() -> new Advance(null, null, null)).hasMessage("UJP08-08 advance.amount must be an amount of zero or more");
         assertThatThrownBy(() -> new Advance(null, null, new BigDecimal("-1"))).hasMessageContaining("zero or more");
         assertThat(new Adjustments(null, null)).isEqualTo(Adjustments.NONE);
         assertThat(new Adjustments(new BigDecimal("5"), new BigDecimal("2")).increase()).isEqualByComparingTo("5");
-        assertThatThrownBy(() -> new Adjustments(new BigDecimal("1.5"), null)).hasMessageStartingWith("UJP08-11");
-        assertThatThrownBy(() -> new Adjustments(null, new BigDecimal("1.5"))).hasMessageStartingWith("UJP08-12");
+        assertThat(new Adjustments(new BigDecimal("1.5"), new BigDecimal("0.25")).decrease()).isEqualByComparingTo("0.25");
+        assertThatThrownBy(() -> new Adjustments(new BigDecimal("1.005"), null)).hasMessageStartingWith("UJP08-11");
+        assertThatThrownBy(() -> new Adjustments(null, new BigDecimal("1.005"))).hasMessageStartingWith("UJP08-12");
     }
 
     @Test

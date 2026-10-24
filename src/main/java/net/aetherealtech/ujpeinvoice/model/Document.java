@@ -1,6 +1,7 @@
 package net.aetherealtech.ujpeinvoice.model;
 
 import java.util.ArrayList;
+import java.util.Currency;
 import java.util.List;
 
 /**
@@ -36,6 +37,7 @@ public record Document(DocumentKind kind, Header header, Mode mode, List<Referen
                 "is required: a seller is always an identified business");
         checkBuyer(kind, buyer);
         checkPayment(kind, payment);
+        checkWholeInMkd(payment, advance, adjustments);
         checkLines(kind, lines);
         Check.that(advance == null || kind.allowsAdvanceDeduction(), "UJP08-06", "advance",
                 "is not on the page of a " + kind.code());
@@ -52,9 +54,14 @@ public record Document(DocumentKind kind, Header header, Mode mode, List<Referen
         return mode instanceof Mode.Storno ? lines.stream().map(Line::negated).toList() : lines;
     }
 
+    /** The currency of the payment, and MKD where there is no payment group (110 and 120) or no currency. */
+    public Currency currency() {
+        return payment == null ? Payment.MKD : payment.currency();
+    }
+
     /** UJP08: the totals, derived from {@link #effectiveLines()}. */
     public DocumentTotals totals() {
-        return DocumentTotals.compute(effectiveLines(), advance, adjustments);
+        return DocumentTotals.compute(effectiveLines(), advance, adjustments, currency());
     }
 
     /** UJP09: one entry per tax indicator and rate group, in first-appearance order. */
@@ -115,6 +122,17 @@ public record Document(DocumentKind kind, Header header, Mode mode, List<Referen
                 "is not on the page of a " + kind.code());
         Check.that(!kind.requiresPaymentType() || (payment != null && payment.type() != null), "UJP10-01",
                 "payment.type", "is required on a " + kind.code());
+    }
+
+    private static void checkWholeInMkd(Payment payment, Advance advance, Adjustments adjustments) {
+        if (payment != null && !payment.currency().equals(Payment.MKD)) {
+            return;
+        }
+        if (advance != null) {
+            Check.wholeInMkd(advance.amount(), "UJP08-08", "advance.amount");
+        }
+        Check.wholeInMkd(adjustments.increase(), "UJP08-11", "adjustments.increase");
+        Check.wholeInMkd(adjustments.decrease(), "UJP08-12", "adjustments.decrease");
     }
 
     private static void checkLines(DocumentKind kind, List<Line> lines) {
