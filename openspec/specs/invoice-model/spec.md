@@ -218,7 +218,8 @@ gateway's tolerance of 0.1, which the library never leans on.
 
 #### Scenario: Four groups in one invoice
 - **WHEN** an invoice has four lines whose unrounded gross values are 105, 2000.0001, 1222.1 and 90
-- **THEN** `gross` is 3417.10, `grossRounded` 3417, `vat` 421.18 and `net` 2995.92, as UJP's example prints them
+- **THEN** `gross` is 3417.10, `grossRounded` 3417, `vat` 421.18 and `net` 2995.92, as UJP's 08.10 example printed them
+  (superseded on 21.10 by a two-group example, so the figures are kept as a model test)
 
 #### Scenario: A cash turnover rounds its unrounded gross
 - **WHEN** a line's gross is 300.0032

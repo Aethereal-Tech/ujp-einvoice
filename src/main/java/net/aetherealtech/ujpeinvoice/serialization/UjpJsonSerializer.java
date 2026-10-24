@@ -32,7 +32,7 @@ import java.util.stream.IntStream;
 
 /**
  * Renders a {@link Document} as the JSON UJP's type pages and worked examples (primer_za_json of
- * 08.10.2026) describe: the envelope {@code {requestTimestamp, document}} with {@code voidReason}
+ * 21.10.2026) describe: the envelope {@code {requestTimestamp, document}} with {@code voidReason}
  * or {@code correctionReason} beside {@code document}, and inside it {@code header},
  * {@code docReferences}, {@code seller}, {@code buyer}, {@code docPayment}, {@code docItems},
  * {@code docTotals}, {@code vatTotals} and {@code docAttributes}. Wire names are the ones in the
@@ -40,35 +40,46 @@ import java.util.stream.IntStream;
  *
  * <h2>What is written, and what is deliberately not</h2>
  * <ul>
- *   <li>The envelope is written for every kind. The 110, 120 and 130 examples show the bare body, but
- *       the signed payload nests under {@code document} (specification-status).</li>
+ *   <li>The envelope is written for every kind. The 21.10 examples show the bare body on 110, 120, 130
+ *       and the ordinary 100s, a {@code document} with its reason and no timestamp on a storno and a
+ *       correction, and the full envelope on 310 alone; the signed payload nests under {@code document}
+ *       and carries the timestamp (specification-status).</li>
  *   <li>An absent scalar or object is {@code null} and an empty list is {@code []}, as every example
  *       writes them. This stays {@link ProvisionalSpec}: it is the examples' habit, not a published
  *       rule, and the gateway's tolerance for omission is unstated.</li>
  *   <li>A group the kind's table does not list is left out whole: {@code docPayment} on 110 and 120,
  *       {@code docAttributes} and line {@code attributes} on all but 100. An optional member no
  *       example carries (subsidiary, base price) is left out when absent rather than written as
- *       {@code null}. The reason object that does not apply is left out too.</li>
+ *       {@code null}, and so is a line's {@code attributes} when it has none: the 21.10 examples carry
+ *       the member on the one line that has attributes and on no other, while {@code docAttributes}
+ *       is {@code []} on every 100. The reason object that does not apply is left out too.</li>
  *   <li>Nothing undocumented is written: not {@code source}, not a trailing {@code requestTimestamp},
  *       not {@code sellerEinvoiceUser} or {@code buyerEinvoiceUser}, not
- *       {@code docGlobalDiscountAmount}, {@code docItemUnitItemDiscountAmount} or
- *       {@code docItemHs}. They appear in some examples and in no table.</li>
+ *       {@code sellerEntityType} or {@code buyerEntityType}, not {@code docGlobalDiscountAmount},
+ *       {@code docItemUnitItemDiscountAmount} or {@code docItemHs}. They appear in some examples and
+ *       in no table.</li>
  *   <li>{@code docCurrencyDate} and {@code docCurrencyExchRate} follow the kind: removed from 100 on
- *       15.10, absent where there is no payment group, listed on 130 and 310.</li>
+ *       15.10 (the 21.10 examples of 100 no longer print them), absent where there is no payment group,
+ *       listed on 130 and 310. {@code docCurrencyCode} is written beside {@code docCurrency} on every
+ *       kind, as the tables list it, though the 21.10 examples of 100 print {@code docCurrency}
+ *       alone.</li>
  * </ul>
  *
  * <h2>Numbers</h2>
  * Every number is written as a JSON number without trailing zeros: {@code 100}, {@code 3417.1},
- * {@code 4.7619}, {@code -95.2381}. That is how every example prints its figures.
+ * {@code 4.7619}, {@code -95.2381}. That is how every example prints its figures, including the
+ * five amounts that became Decimal 15.2 on 19.10.2026: an MKD sum prints {@code 668}, not
+ * {@code 668.00}, and the changelog's ",00" is a display convention the examples do not carry.
  *
  * <p>Member order within each object is fixed. The examples disagree among themselves (the
  * {@code docStorno} member comes first in some and last in others); this order follows the tables'
  * UJP codes, with the groups in the order of the envelope above.
  */
 @ProvisionalSpec("The schema is unpublished (specification-status). Open: null for an absent scalar and [] for an "
-        + "empty list rather than omission; the envelope on 110, 120 and 130, whose examples are bare; the "
-        + "single reason object, where the 310 example writes both as null; leaving out every member no table "
-        + "documents; and which optional members are written when absent")
+        + "empty list rather than omission; the envelope, which the 21.10 examples write bare or without a "
+        + "timestamp on every kind but 310; the single reason object, where the 310 example writes both as null; "
+        + "leaving out every member no table documents; and which optional members are written when absent, "
+        + "among them a line's empty attributes")
 public final class UjpJsonSerializer implements Serializer {
 
     private static final DateTimeFormatter TIMESTAMP = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
@@ -123,7 +134,7 @@ public final class UjpJsonSerializer implements Serializer {
     }
 
     @ProvisionalSpec("docAlt: Boolean in the changelog of 14.09, Integer(4) in the type pages of 08.10, "
-            + "false in the only example that carries it; written as a JSON boolean. docIndicator is written "
+            + "false in every 21.10 example of 100 and absent from the rest; written as a JSON boolean. docIndicator is written "
             + "for every kind though only 100 lists it, as the 110, 120, 130 and 310 examples do")
     private JsonObject header(Document document) {
         Header header = document.header();
@@ -252,14 +263,14 @@ public final class UjpJsonSerializer implements Serializer {
                     .put("docItemBasePriceWoVatDeduct", number(line.basePrice().deduct()))
                     .put("docItemBasePriceType", line.basePrice().type());
         }
-        if (document.kind().allowsAttributes()) {
+        if (document.kind().allowsAttributes() && !line.attributes().isEmpty()) {
             item.put("attributes", array(line.attributes(), this::attribute));
         }
         return item.build();
     }
 
-    @ProvisionalSpec("The advance block and the increase and decrease are in every example but only in some "
-            + "tables (UJP08-06 to UJP08-09 are on the 100 table alone); written for every kind, as the examples do")
+    @ProvisionalSpec("The advance block is in every example and the increase and decrease in every 100 example, but "
+            + "only some tables list them (UJP08-06 to UJP08-09 are on the 100 table alone); written for every kind")
     private JsonObject totals(DocumentTotals totals, Advance advance) {
         return JsonObject.builder()
                 .put("docNetAmount", number(totals.net()))
